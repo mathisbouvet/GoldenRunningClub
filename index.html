@@ -1644,11 +1644,7 @@ if ((ev.description || "").length > 260) {
   };
   c.appendChild(toggle);
 }
-
 c.appendChild(actions);
-
-
-
       return c;
     }
 
@@ -1995,6 +1991,7 @@ async function refreshRole(){
         await createUserWithEmailAndPassword(auth, email, pwd);
       }
       await refreshRole();
+        alert("Compte créé avec succès.\nMerci d’attendre l’approbation de l’administrateur avant de pouvoir accéder à l’application.");
     }catch(e){ alert(e.message||e); }
   });
 
@@ -2100,11 +2097,17 @@ clubSelect?.addEventListener('change', ()=>{
   CURRENT_CLUB = clubSelect.value;
   localStorage.setItem('grc_club', CURRENT_CLUB);
 
-  // ⚠️ Ne plus vider les events du cache ici !
-  // On redémarre simplement les listeners Firestore
+  // On redémarre les listeners
   stopRealtime();
   startRealtime();
+
+  // 🔄 Force un re-render immédiat avec la date sélectionnée
+  const d = window.GRC_Calendar?.getSelectedDate?.();
+  if (d) {
+    window.GRC_Calendar?.setSelectedDate(d);
+  }
 });
+
 
   // Au chargement, bloque si pas connecté
   document.addEventListener('DOMContentLoaded', ()=>{
