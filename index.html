@@ -202,6 +202,8 @@ body.locked .views {
   text-overflow: ellipsis;
 }
 
+
+
 /* Modales : garder un layout stable quand la description est longue */
 .modal .dialog{
   max-height: 90vh;            /* évite que ça dépasse l’écran */
@@ -231,6 +233,8 @@ body.locked .views {
 .li-step{display:flex;gap:8px;align-items:flex-start}
 .li-step .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;background:#9aa4ad55}
 .li-details{font-size:12px;color:var(--muted)}
+
+
 
 
 .modal .dialog{
@@ -264,6 +268,28 @@ body.locked .views {
 .li-details{font-size:12px;color:var(--muted)}
 .li-loop{border-left:2px dashed var(--ring);padding-left:10px;margin-left:8px}
 .li-loop .head{display:flex;align-items:center;gap:8px;font-weight:800}
+
+/* ===== Adaptations Mobile ===== */
+@media (max-width: 600px){
+  .topbar{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .brand h1{ font-size: 16px; }
+  #authStatus, .chip{ margin-left: 0 !important; }
+}
+@media (max-width: 480px){
+  .day{ min-height: 80px; padding:6px; }
+  .week{ font-size:10px; }
+  .event-list{ max-height: 300px; }
+  .session, .ev-card{ padding:10px; }
+  .meta .pill{ font-size:11px; padding:3px 6px; }
+}
+@media (max-width: 400px){
+  .modal .dialog{ border-radius:0; width:100%; height:100%; max-height:none; }
+}
+
 
   </style>
 </head>
@@ -1343,14 +1369,17 @@ function renderCard(s){
   // Voir (lecture seule pour coureurs ; fallback alerte si la modale lecture n'est pas branchée)
   const viewBtn = document.createElement("button"); viewBtn.className="btn small"; viewBtn.textContent="Voir";viewBtn.dataset.public = "1"; 
 viewBtn.onclick = () => {
-  if (typeof openWorkoutView === "function") {
-    return openWorkoutView(s); // coureurs ET admins -> lecture seule
-  }
+  // → Priorité à l'édition pour un admin
   if (window.GRC_IsAdmin) {
-    return openModalSession(s); // fallback édition admin
+    return openModalSession(s);   // admin : ouvre l'éditeur
+  }
+  // → Sinon, lecture seule pour les coureurs
+  if (typeof openWorkoutView === "function") {
+    return openWorkoutView(s);    // coureur : lecture seule
   }
   alert("Lecture seule — demande à un admin si tu veux modifier.");
 };
+
 
   actions.appendChild(viewBtn);
 
