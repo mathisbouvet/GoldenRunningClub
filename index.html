@@ -1631,8 +1631,21 @@ openBtn.onclick=()=>{
 
  c.appendChild(head);
  c.appendChild(desc);
- if ((ev.description || "").length > 260) c.appendChild(toggle);
- c.appendChild(actions);
+if ((ev.description || "").length > 260) {
+  const toggle = document.createElement('button');
+  toggle.className = 'btn small ghost';
+  toggle.type = 'button';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.textContent = 'Afficher plus';
+  toggle.onclick = () => {
+    const collapsed = desc.classList.toggle('truncate'); // retire/rajoute la troncature 5 lignes
+    toggle.textContent = collapsed ? 'Afficher plus' : 'Réduire';
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+  };
+  c.appendChild(toggle);
+}
+
+c.appendChild(actions);
 
 
 
