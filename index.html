@@ -85,6 +85,14 @@ body.locked .views {
     }
     .sep{height:1px; background:var(--ring); margin:6px 0}
 
+    /* Modale lecture : description non tronquée */
+.desc-full{
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: var(--fg, #111827);
+}
+
+
     /* VIEWS WRAPPER */
     .views{max-width:1200px; margin:0 auto; padding:0 16px 28px}
     .view{display:none}
@@ -165,6 +173,66 @@ body.locked .views {
 }
 .modal.open{ display: flex; }  /* on l'affiche quand .open est ajouté */
 
+/* Petit encart informatif quand il n'y a aucun évènement ce jour */
+.next-info{
+  margin-top:8px;
+  padding:8px 10px;
+  border:1px dashed var(--border, #e5e7eb);
+  border-radius:10px;
+  font-size:.9rem;
+  color:var(--muted-fg, #6b7280);
+}
+/* Forcer les très longs mots/URLs à se couper proprement partout */
+.wrap,
+.ev-card .hint,
+.ev-title,
+.event .title,
+.event .desc,
+.desc-full {
+  overflow-wrap: anywhere;     /* moderne */
+  word-break: break-word;      /* fallback */
+}
+
+/* Cartes "Événements spéciaux" : aperçu multi‑lignes (5 lignes) */
+.ev-card .hint.truncate {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Modales : garder un layout stable quand la description est longue */
+.modal .dialog{
+  max-height: 90vh;            /* évite que ça dépasse l’écran */
+  overflow: auto;              /* permet de scroller le contenu */
+}
+
+/* Description en lecture (modale) : belles césures + préservation des retours à la ligne */
+.desc-full{
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+
+/* Aperçu multi-lignes (3 lignes max) pour la description des événements du jour */
+.event .desc{
+  display: -webkit-box;
+  -webkit-line-clamp: 3;          /* nombre de lignes */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+  max-height: 3.6em;              /* ~ 3 lignes selon la taille de police */
+}
+
+/* Liste claire des étapes (lecture seule) */
+.ul-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.li-step{display:flex;gap:8px;align-items:flex-start}
+.li-step .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;background:#9aa4ad55}
+.li-details{font-size:12px;color:var(--muted)}
+
+
 .modal .dialog{
   width: min(640px, 100%);
   background: linear-gradient(180deg, var(--panel), var(--panel-2));
@@ -178,6 +246,24 @@ body.locked .views {
 .form{ display:flex; flex-direction:column; gap:10px; }
 .form .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
 @media (max-width: 640px){ .form .row{ grid-template-columns: 1fr; } }
+
+/* ====== Builder de séance ====== */
+.w-builder{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.w-row{border:1px solid var(--ring);border-radius:12px;padding:10px;background:rgba(255,255,255,.03)}
+.w-row .top{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.w-row .inputs{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin-top:8px}
+@media (max-width:640px){ .w-row .inputs{grid-template-columns:1fr} }
+.w-actions{display:flex;gap:6px;flex-wrap:wrap}
+.loop{border-left:3px solid var(--brand); padding-left:10px; margin-top:10px}
+.loop .badge{background:var(--brand); color:#1c1400; font-weight:900; border-radius:999px; padding:2px 8px; font-size:12px}
+
+/* Affichage carte (résumé structure) */
+.ul-steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.li-step{display:flex;gap:8px;align-items:flex-start}
+.li-step .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;background:#9aa4ad55}
+.li-details{font-size:12px;color:var(--muted)}
+.li-loop{border-left:2px dashed var(--ring);padding-left:10px;margin-left:8px}
+.li-loop .head{display:flex;align-items:center;gap:8px;font-weight:800}
 
   </style>
 </head>
@@ -382,6 +468,11 @@ body.locked .views {
           <div class="hint" style="font-weight:700;margin-bottom:6px">Couleur</div>
           <div class="colors" id="colorRow" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap"></div>
         </div>
+<div>
+  <div class="hint" style="font-weight:700;margin-bottom:6px">Villes concernées</div>
+  <div id="clubsRow" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+</div>
+
         <label class="chip" style="width:max-content; margin-top:4px">
           <input type="checkbox" id="specialInput" style="accent-color:#111; margin-right:6px">★ Événement spécial
         </label>
@@ -433,6 +524,13 @@ body.locked .views {
         </div>
         <div>
           <div class="hint" style="font-weight:700;margin-bottom:6px">Structure (une étape par ligne)</div>
+          <div class="hint" style="font-weight:700;margin-top:6px">Construction (étapes + boucles)</div>
+<div id="wBuilder" class="w-builder"></div>
+<div class="actions" id="wBuilderActions" style="margin-top:4px">
+  <button type="button" class="btn small" id="btnAddStep">+ Étape</button>
+  <button type="button" class="btn small" id="btnAddLoop">+ Boucle</button>
+</div>
+
           <textarea id="wSteps" placeholder="Ex :&#10;15’ Échauffement&#10;10×400m à 5K pace (r:1’)&#10;10’ Retour au calme"></textarea>
         </div>
         <div>
@@ -453,6 +551,47 @@ body.locked .views {
       </form>
     </div>
   </div>
+
+  <!-- MODALE LECTURE EVENEMENT (read-only) -->
+<div class="modal" id="modalEventView" aria-hidden="true" aria-modal="true" role="dialog">
+  <div class="dialog">
+    <div class="cal-header" style="padding:0 0 10px 0">
+      <div class="cal-title">
+        <h2 id="evViewTitle">Évènement</h2>
+        <div class="sub" id="evViewWhen">—</div>
+      </div>
+      <div><button class="btn small" id="evViewClose">✕</button></div>
+    </div>
+    <div class="form" style="gap:10px">
+      <div class="row" style="align-items:center;gap:8px">
+        <span class="dot" id="evViewDot" style="width:10px;height:10px;border-radius:999px;background:#6366f1"></span>
+        <span class="chip" id="evViewTag">Évènement</span>
+      </div>
+      <div id="evViewDesc" class="desc-full"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE LECTURE SÉANCE (read-only) -->
+<div class="modal" id="modalWorkoutView" aria-hidden="true" aria-modal="true" role="dialog">
+  <div class="dialog">
+    <div class="cal-header" style="padding:0 0 10px 0">
+      <div class="cal-title">
+        <h2 id="woViewTitle">Séance</h2>
+        <div class="sub" id="woViewMeta">—</div>
+      </div>
+      <div><button class="btn small" id="woViewClose">✕</button></div>
+    </div>
+
+    <div class="form" style="gap:10px">
+      <div id="woViewSteps"></div>
+      <div id="woViewDesc" class="desc-full"></div>
+      <div id="woViewTags" class="hint"></div>
+    </div>
+  </div>
+</div>
+
+
 
   <section id="view-social" class="view" role="tabpanel" aria-labelledby="tab-social" hidden>
   <div class="panel" style="display:flex;gap:16px;flex-wrap:wrap">
@@ -515,6 +654,16 @@ body.locked .views {
     /* Storage */
     const STORAGE_KEY = "grc_events";
     const readEvents = () => { try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch(e){ return []; } };
+
+function readClubEvents(){
+const cur = localStorage.getItem('grc_club') || 'bordeaux';
+return readEvents().filter(e=>{
+if (Array.isArray(e.clubs)) return e.clubs.includes(cur);
+    if (e.club_id) return e.club_id === cur;       // legacy
+    return true; // compat si rien n’est renseigné
+  });
+}
+
     const writeEvents = (arr) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); window.dispatchEvent(new Event('grc:events-changed')); };
     const upsertEvent = (evt) => { const arr = readEvents(); const i = arr.findIndex(e => e.id===evt.id); if(i>=0) arr[i]=evt; else arr.push(evt); writeEvents(arr); };
     const deleteEventById = (id) => writeEvents(readEvents().filter(e => e.id !== id));
@@ -546,7 +695,32 @@ body.locked .views {
       descInput: document.getElementById("descInput"),
       specialInput: document.getElementById("specialInput"),
       eventId: document.getElementById("eventId"),
+  colorRow: document.getElementById("colorRow"),
+  // +++
+  clubsRow: document.getElementById("clubsRow"),
+
     };
+
+    function renderClubChecks(selected=[]) {
+  const CL = (window.GRC_CLUBS || [
+    { id:'madrid',label:'Madrid' },{ id:'biarritz',label:'Biarritz' },
+    { id:'limoges',label:'Limoges' },{ id:'noirmoutier',label:'Noirmoutier' },
+    { id:'bordeaux',label:'Bordeaux' },{ id:'poitiers',label:'Poitiers' },
+  ]);
+  els.clubsRow.innerHTML = "";
+  CL.forEach(c=>{
+    const id = `club_${c.id}`;
+    const w = document.createElement('label');
+    w.className = 'chip';
+    w.innerHTML = `<input type="checkbox" id="${id}" value="${c.id}" style="accent-color:#111;margin-right:6px"> ${c.label}`;
+    els.clubsRow.appendChild(w);
+    w.querySelector('input').checked = selected.includes(c.id);
+  });
+}
+function readSelectedClubs(){
+  return Array.from(els.clubsRow.querySelectorAll('input[type="checkbox"]:checked')).map(i=>i.value);
+}
+
 
     const COLORS = ["#ffd166","#06d6a0","#4cc9f0","#a78bfa","#ff5c7a","#f6bd60","#84dcc6","#8bd3dd","#f28482","#90be6d"];
     let selectedColor = COLORS[0];
@@ -605,13 +779,14 @@ body.locked .views {
         head.appendChild(dlabel); head.appendChild(addBtn);
 
         const badges=document.createElement("div"); badges.className="badges";
-        const list = readEvents().filter(ev=>ev.date===ymd(cellDate)).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
+        const list = readClubEvents().filter(ev=>ev.date===ymd(cellDate)).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
         list.slice(0,3).forEach(ev=>{
           const b=document.createElement("button"); b.type="button"; b.className="badge"; b.title=ev.title;
           const dot=document.createElement("span"); dot.className="dot"; dot.style.background=ev.color||selectedColor;
           const text=document.createElement("span"); text.textContent=(ev.time?ev.time+" ":"") + (ev.special?"★ ":"") + ev.title;
           b.appendChild(dot); b.appendChild(text);
-          b.onclick=(e)=>{ e.stopPropagation(); openForm(ev); };
+          b.onclick = (e)=>{ e.stopPropagation(); openFormOrView(ev); };
+
           badges.appendChild(b);
         });
         if(list.length>3){ const more=document.createElement("span"); more.className="hint"; more.textContent=`+${list.length-3}…`; badges.appendChild(more); }
@@ -623,70 +798,196 @@ body.locked .views {
       }
     }
 
-    function renderSide(){
-      const ymdSel = ymd(state.selected);
-      const list = readEvents().filter(e=>e.date===ymdSel).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
-      els.eventList.innerHTML="";
-      if(list.length===0){ const empty=document.createElement("div"); empty.className="empty"; empty.textContent="Aucun évènement pour ce jour."; els.eventList.appendChild(empty); return; }
-      list.forEach(ev=>{
-        const item=document.createElement("div"); item.className="event";
-        const dot=document.createElement("span"); dot.className="dot"; dot.style.background=ev.color||selectedColor; dot.style.marginTop="6px";
-        const time=document.createElement("div"); time.className="time"; time.textContent=ev.time||"—";
-        const body=document.createElement("div");
-        const title=document.createElement("div"); title.className="title"; title.textContent=(ev.special?"★ ":"")+ev.title;
-        const desc=document.createElement("div"); desc.className="hint"; desc.textContent=ev.description||"";
-        const actions=document.createElement("div"); actions.style.marginTop="8px";
-        const edit=document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier"; edit.onclick=()=> openForm(ev);
-        actions.appendChild(edit);
-        body.appendChild(title); if(ev.description) body.appendChild(desc); body.appendChild(actions);
-        item.appendChild(dot); item.appendChild(time); item.appendChild(body); els.eventList.appendChild(item);
-      });
-    }
+// utilitaire (mets-le juste au-dessus de renderSide si tu veux limiter aussi en caractères)
+const preview = (txt, max = 160) => {
+  const t = (txt || "").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut) + "…";
+};
+
+function evDateTime(ev){
+  // ev.date = "YYYY-MM-DD", ev.time = "HH:MM" (optionnel)
+  const [y,m,d] = (ev.date||"").split("-").map(Number);
+  const [hh,mm] = (ev.time||"00:00").split(":").map(Number);
+  return new Date(y, (m||1)-1, d||1, hh||0, mm||0, 0, 0);
+}
+function formatDateFR(d){
+  return d.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit' });
+}
+
+
+function renderSide(){
+  const ymdSel = ymd(state.selected);
+  const list = readClubEvents().filter(e=>e.date===ymdSel).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
+  els.eventList.innerHTML="";
+if(list.length===0){
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.textContent = "Aucun évènement pour ce jour.";
+  els.eventList.appendChild(empty);
+
+  // ➜ Cherche le prochain évènement à venir (toutes villes déjà filtrées par Firestore)
+  const ref = new Date(state.selected);
+  ref.setHours(23,59,59,999); // fin de la journée sélectionnée
+
+  const nextWrap = readClubEvents()
+    .map(e => ({ e, dt: evDateTime(e) }))
+    .filter(x => x.dt > ref)
+    .sort((a,b) => a.dt - b.dt)[0];
+
+  if(nextWrap){
+    const { e, dt } = nextWrap;
+    const info = document.createElement("div");
+    info.className = "next-info";
+    info.textContent = `Prochain évènement : ${formatDateFR(dt)} — ${e.time || "—"} — ${e.title || "Sans titre"}`;
+    els.eventList.appendChild(info);
+  }
+  return;
+}
+
+list.forEach(ev=>{
+  const item=document.createElement("div"); item.className="event";
+  const dot=document.createElement("span"); dot.className="dot"; dot.style.background=ev.color||selectedColor; dot.style.marginTop="6px";
+  const time=document.createElement("div"); time.className="time"; time.textContent=ev.time||"—";
+  const body=document.createElement("div");
+  const title=document.createElement("div"); title.className="title"; title.textContent=(ev.special?"★ ":"")+ev.title;
+
+  // Aperçu 3 lignes + tooltip
+  const desc=document.createElement("div");
+  desc.className="hint desc";
+  desc.textContent = preview(ev.description, 160);
+  desc.title = ev.description || "";
+
+  // 👉 rendre le corps cliquable pour LECTURE (coureurs)
+  body.addEventListener('click', (e)=>{
+    if(e.target.closest?.('.actions')) return; // ne pas intercepter le bouton
+    openFormOrView(ev);
+  });
+
+  body.appendChild(title);
+  if(ev.description) body.appendChild(desc);
+
+  // 👉 bouton Modifier seulement si ADMIN
+  if (window.GRC_IsAdmin) {
+    const actions=document.createElement("div"); actions.className="actions"; actions.style.marginTop="8px";
+    const edit=document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier";
+    edit.onclick=()=> openForm(ev);
+    actions.appendChild(edit);
+    body.appendChild(actions);
+  }
+
+  item.appendChild(dot); item.appendChild(time); item.appendChild(body);
+  els.eventList.appendChild(item);
+});
+
+}
+
 
     function renderAll(){ renderHeader(); renderGrid(); renderSide(); }
 
-    /* Formulaire évènement */
-    function openForm(data){
-      const isEdit = !!data.id;
-      els.formTitle.textContent = isEdit ? "Modifier l’évènement" : "Nouvel évènement";
-      const hintFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric', timeZone: tz});
-      const hintDate = data.date ? fromYMD(data.date) : state.selected;
-      els.formDateHint.textContent = hintFmt.format(hintDate);
-      els.modal.classList.add("open"); els.modal.setAttribute("aria-hidden","false");
+function fmtDateTimeFR(d){
+  return d.toLocaleString('fr-FR', {
+    weekday:'long', day:'2-digit', month:'long', year:'numeric',
+    hour:'2-digit', minute:'2-digit'
+  });
+}
+function openEventView(ev){
+  const modal = document.getElementById('modalEventView');
+  const dot   = document.getElementById('evViewDot');
+  const tag   = document.getElementById('evViewTag');
+  const title = document.getElementById('evViewTitle');
+  const when  = document.getElementById('evViewWhen');
+  const desc  = document.getElementById('evViewDesc');
 
-      // preset
-      els.eventId.value = data.id || "";
-      els.titleInput.value = data.title || "";
-      els.dateInput.value = data.date || ymd(state.selected);
-      els.timeInput.value = data.time || "";
-      els.descInput.value = data.description || "";
-      els.specialInput.checked = !!data.special;
-      selectedColor = data.color || COLORS[0];
-      renderColorSwatches(selectedColor);
-      els.deleteBtn.style.display = isEdit ? "inline-flex" : "none";
-      setTimeout(()=> els.titleInput.focus(), 50);
-    }
+  title.textContent = (ev.special ? "★ " : "") + (ev.title || "Sans titre");
+  const dt = evDateTime(ev); // tu l’as déjà (utilisée pour le “prochain évènement”)
+  when.textContent = fmtDateTimeFR(dt) + (ev.place ? ` — ${ev.place}` : "");
+  tag.textContent = ev.special ? "Évènement spécial" : "Évènement";
+  if(dot) dot.style.background = ev.color || "#6366f1";
+  desc.textContent = ev.description || "—";
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+}
+// Fermeture modale lecture
+(function wireEventViewClose(){
+  const modal = document.getElementById('modalEventView');
+  const close = document.getElementById('evViewClose');
+  close?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+  modal?.addEventListener('click', (e)=>{ if(e.target===modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }});
+})();
+
+// Routeur : admin => édition, coureur => lecture seule
+function openFormOrView(ev){
+  if (window.GRC_IsAdmin) return openForm(ev);
+  return openEventView(ev);
+}
+
+
+function openForm(data){
+  // Garde-fou UI : seuls les admins peuvent ouvrir le form
+  if(!window.GRC_IsAdmin){
+    // Si non connecté : on déclenche la pop-up d'auth
+    const authBtn = document.getElementById('authOpen');
+    if(authBtn) authBtn.click();
+    else alert("Seuls les admins peuvent modifier les évènements.");
+    return;
+  }
+  selectedColor = data.color || COLORS[0];
+  renderColorSwatches(selectedColor);
+
+  // Villes : si l’évènement en a déjà, on les reprend ; sinon on coche la ville courante
+  const defaultClub = localStorage.getItem('grc_club') || 'bordeaux';
+  const presetClubs = Array.isArray(data.clubs) && data.clubs.length ? data.clubs : [defaultClub];
+  renderClubChecks(presetClubs);
+  const isEdit = !!data.id;
+  els.formTitle.textContent = isEdit ? "Modifier l’évènement" : "Nouvel évènement";
+  const hintFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric', timeZone: tz});
+  const hintDate = data.date ? fromYMD(data.date) : state.selected;
+  els.formDateHint.textContent = hintFmt.format(hintDate);
+  els.modal.classList.add("open"); els.modal.setAttribute("aria-hidden","false");
+
+  // preset
+  els.eventId.value = data.id || "";
+  els.titleInput.value = data.title || "";
+  els.dateInput.value = data.date || ymd(state.selected);
+  els.timeInput.value = data.time || "";
+  els.descInput.value = data.description || "";
+  els.specialInput.checked = !!data.special;
+  selectedColor = data.color || COLORS[0];
+  renderColorSwatches(selectedColor);
+  els.deleteBtn.style.display = isEdit ? "inline-flex" : "none";
+  setTimeout(()=> els.titleInput.focus(), 50);
+}
+
     function closeForm(){
       els.modal.classList.remove("open"); els.modal.setAttribute("aria-hidden","true");
       els.form.reset(); els.eventId.value=""; els.deleteBtn.style.display="none";
     }
-    els.form.addEventListener("submit",(e)=>{
-      e.preventDefault();
-      const payload = {
-        id: els.eventId.value || `e_${Date.now()}`,
-        title: els.titleInput.value.trim(),
-        date: els.dateInput.value,
-        time: els.timeInput.value,
-        description: els.descInput.value.trim(),
-        special: !!els.specialInput.checked,
-        color: selectedColor,
-      };
-      if(!payload.title) { els.titleInput.focus(); return; }
-      if(!payload.date) { els.dateInput.focus(); return; }
-      upsertEvent(payload);
-      state.selected = fromYMD(payload.date);
-      closeForm(); renderAll();
-    });
+els.form.addEventListener("submit",(e)=>{
+  e.preventDefault();
+  const payload = {
+    id: els.eventId.value || `e_${Date.now()}`,
+    title: els.titleInput.value.trim(),
+    date: els.dateInput.value,
+    time: els.timeInput.value,
+    description: els.descInput.value.trim(),
+    special: !!els.specialInput.checked,
+    color: selectedColor,
+    // +++
+    clubs: readSelectedClubs()
+  };
+  if(!payload.title){ els.titleInput.focus(); return; }
+  if(!payload.date){ els.dateInput.focus(); return; }
+  if(!payload.clubs?.length){ alert("Sélectionne au moins une ville."); return; }
+
+  upsertEvent(payload);
+  state.selected = fromYMD(payload.date);
+  closeForm(); renderAll();
+});
+
     els.deleteBtn.addEventListener("click",()=>{
       const id = els.eventId.value;
       if(id && confirm("Supprimer cet évènement ?")){ deleteEventById(id); closeForm(); renderAll(); }
@@ -723,14 +1024,28 @@ body.locked .views {
 
     /* Init + API exposée */
     renderColorSwatches(COLORS[0]); renderAll();
-    window.GRC_Calendar = {
-      openEventForm: (preset={}) => { // {date?,title?,description?,time?,color?,special?}
-        if(preset.date){ try{ state.selected = fromYMD(preset.date); state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1); }catch(e){} }
-        openForm(preset);
-      },
-      getSelectedDate: () => ymd(state.selected),
-      setSelectedDate: (dateStr) => { state.selected = fromYMD(dateStr); state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1); renderAll(); }
-    };
+// À la fin de l’IIFE Calendrier, après renderAll();
+window.GRC_Calendar = {
+  openEventForm: (preset = {}) => {
+    if (preset.date) {
+      try {
+        state.selected = fromYMD(preset.date);
+        state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1);
+      } catch(e) {}
+    }
+    openForm(preset);
+  },
+  getSelectedDate: () => ymd(state.selected),
+  setSelectedDate: (dateStr) => {
+    state.selected = fromYMD(dateStr);
+    state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1);
+    renderAll();
+  },
+  openEventView: (ev) => openEventView(ev),
+  openFormOrView: (ev) => { if (window.GRC_IsAdmin) openForm(ev); else openEventView(ev); }
+};
+
+
   })();
 
   /* ========= CATALOGUE DE SÉANCES ========= */
@@ -740,6 +1055,29 @@ body.locked .views {
     const write = (arr) => localStorage.setItem(KEY, JSON.stringify(arr));
     const upsert = (s) => { const arr = read(); const i = arr.findIndex(x=>x.id===s.id); if(i>=0) arr[i]=s; else arr.push(s); write(arr); };
     const del = (id) => write(read().filter(x=>x.id!==id));
+
+    // ===== Modèle de structure =====
+// Step: { kind:'step', title:'400m', details:'@5K (r:1’)' }
+// Loop: { kind:'loop', times:10, children:[Step, Step...] }
+function normalizeStructure(s){
+  // rétro‑compat: steps (strings) -> steps structurées
+  if (Array.isArray(s?.structure)) return s.structure;
+  const arr = Array.isArray(s?.steps) ? s.steps : (s?.steps ? String(s.steps).split("\n") : []);
+  return arr.map(line => ({ kind:'step', title: line.trim(), details:'' })).filter(x=>x.title);
+}
+function structureToLines(struct){
+  const lines = [];
+  (struct||[]).forEach(node=>{
+    if(node.kind==='step'){ lines.push(node.title + (node.details?` ${node.details}`:'')); }
+    else if(node.kind==='loop'){
+      lines.push(`${node.times}× (`);
+      node.children?.forEach(ch => lines.push('  - ' + (ch.title + (ch.details?` ${ch.details}`:''))));
+      lines.push(')');
+    }
+  });
+  return lines;
+}
+
 
     /* Seed data si vide */
     if(read().length===0){
@@ -802,11 +1140,117 @@ body.locked .views {
       els.wTags.value = Array.isArray(data.tags)? data.tags.join(", ") : (data.tags || "");
       els.wDelete.style.display = isEdit ? "inline-flex" : "none";
       setTimeout(()=> els.wTitle.focus(), 50);
+      // …champs existants…
+_builderData = Array.isArray(data.structure)
+  ? JSON.parse(JSON.stringify(data.structure))
+  : normalizeStructure(data);
+renderBuilder();
+
+// boutons "ajouter"
+document.getElementById('btnAddStep')?.addEventListener('click', ()=>{
+  _builderData.push({ kind:'step', title:'', details:'' });
+  renderBuilder();
+});
+document.getElementById('btnAddLoop')?.addEventListener('click', ()=>{
+  _builderData.push({ kind:'loop', times: 2, children: [{kind:'step', title:'', details:''}] });
+  renderBuilder();
+}, { once:false });
+
     }
     function closeModalSession(){ els.modal.classList.remove("open"); els.modal.setAttribute("aria-hidden","true"); els.form.reset(); els.wId.value=""; els.wDelete.style.display="none"; }
     els.closeBtn.addEventListener('click', closeModalSession);
     document.addEventListener('keydown', (e)=>{ if(e.key==="Escape" && els.modal.classList.contains("open")) closeModalSession(); });
     els.modal.addEventListener('click', (e)=>{ if(e.target===els.modal) closeModalSession(); });
+
+    let _builderData = []; // structure en mémoire
+
+function renderBuilder(){
+  const wrap = document.getElementById('wBuilder');
+  if(!wrap) return;
+  wrap.innerHTML = "";
+  _builderData.forEach((node, idx)=>{
+    const row = document.createElement('div');
+    row.className = 'w-row' + (node.kind==='loop' ? ' loop' : '');
+
+    // Barre du haut
+    const top = document.createElement('div'); top.className='top';
+    const left = document.createElement('div');
+    left.innerHTML = node.kind==='loop'
+      ? `<span class="badge">Boucle ×${node.times||2}</span>`
+      : `<strong>Étape</strong>`;
+    const actions = document.createElement('div'); actions.className='w-actions';
+    const up = btn('↑', ()=> moveNode(idx, -1));
+    const down = btn('↓', ()=> moveNode(idx, +1));
+    const del = btn('Supprimer', ()=> { _builderData.splice(idx,1); renderBuilder(); });
+    actions.appendChild(up); actions.appendChild(down); actions.appendChild(del);
+    top.appendChild(left); top.appendChild(actions);
+    row.appendChild(top);
+
+    // Inputs
+    if(node.kind==='step'){
+      const inputs = document.createElement('div'); inputs.className='inputs';
+      const t = input(node.title||"", "Titre (ex: 400m)", v=>{ node.title=v; });
+      const d = input(node.details||"", "Détails (ex: @5K, r:1’)", v=>{ node.details=v; });
+      inputs.appendChild(t); inputs.appendChild(d);
+      row.appendChild(inputs);
+    } else { // loop
+      const inputs = document.createElement('div'); inputs.className='inputs';
+      const n = input(String(node.times||2), "Répétitions (ex: 10)", v=>{ node.times = Math.max(2, parseInt(v||"2",10)||2); renderBuilder(); }, "number");
+      inputs.appendChild(n);
+      row.appendChild(inputs);
+
+      // enfants
+      const kids = document.createElement('div'); kids.className='w-children';
+      (node.children||[]).forEach((ch, kidx)=>{
+        const kid = document.createElement('div'); kid.className='w-row';
+        const ktop = document.createElement('div'); ktop.className='top';
+        ktop.innerHTML = `<strong>Étape (boucle)</strong>`;
+        const kact = document.createElement('div'); kact.className='w-actions';
+        kact.appendChild(btn('↑', ()=> moveChild(node, kidx, -1)));
+        kact.appendChild(btn('↓', ()=> moveChild(node, kidx, +1)));
+        kact.appendChild(btn('Supprimer', ()=> { node.children.splice(kidx,1); renderBuilder(); }));
+        ktop.appendChild(kact);
+        kid.appendChild(ktop);
+
+        const kin = document.createElement('div'); kin.className='inputs';
+        const kt = input(ch.title||"", "Titre", v=>{ ch.title=v; });
+        const kd = input(ch.details||"", "Détails", v=>{ ch.details=v; });
+        kin.appendChild(kt); kin.appendChild(kd);
+        kid.appendChild(kin);
+        kids.appendChild(kid);
+      });
+
+      const addChild = btn('+ Étape dans la boucle', ()=>{ node.children.push({kind:'step', title:'', details:''}); renderBuilder(); });
+      kids.appendChild(addChild);
+      row.appendChild(kids);
+    }
+
+    wrap.appendChild(row);
+  });
+}
+
+function btn(label, onClick){
+  const b = document.createElement('button');
+  b.type='button'; b.className='btn small ghost'; b.textContent=label;
+  b.onclick=onClick; return b;
+}
+function input(value, placeholder, onInput, type='text'){
+  const i = document.createElement('input');
+  i.type = type; i.value = value || ""; i.placeholder = placeholder;
+  i.className = 'input'; i.style.cssText='width:100%;border:1px solid var(--ring);background:rgba(255,255,255,.03);color:var(--text);padding:8px 10px;border-radius:10px';
+  i.oninput = e => onInput(e.target.value);
+  return i;
+}
+function moveNode(i, delta){
+  const j = i + delta; if(j<0 || j>=_builderData.length) return;
+  const t = _builderData[i]; _builderData[i] = _builderData[j]; _builderData[j] = t;
+  renderBuilder();
+}
+function moveChild(loop, i, delta){
+  const arr = loop.children; const j = i + delta; if(j<0 || j>=arr.length) return;
+  const t = arr[i]; arr[i]=arr[j]; arr[j]=t; renderBuilder();
+}
+
 
     /* Render list */
     function render(){
@@ -846,75 +1290,214 @@ body.locked .views {
       items.forEach(s=> els.list.appendChild(renderCard(s)));
     }
 
-    function renderCard(s){
-      const card = document.createElement("div"); card.className="session card";
-      const head = document.createElement("div"); head.className="head";
-      const title = document.createElement("div"); title.style.fontWeight="800"; title.textContent=s.title;
-      const tag = document.createElement("span"); tag.className="tag"; tag.textContent=s.type;
-      head.appendChild(title); head.appendChild(tag);
+    function openFormOrView(ev){
+  if (window.GRC_IsAdmin) return openForm(ev);
+  return openEventView(ev);
+}
 
-      const meta = document.createElement("div"); meta.className="meta";
-      const dur = document.createElement("span"); dur.className="pill"; dur.textContent = `${s.duration||"-"} min`;
-      const inten = document.createElement("span"); inten.className="pill"; inten.textContent = `Intensité : ${s.intensity}`;
-      if(s.tags && s.tags.length) {
-        const t = document.createElement("span"); t.className="pill"; t.textContent = "# "+s.tags.join(", ");
-        meta.appendChild(t);
-      }
-      meta.appendChild(dur); meta.appendChild(inten);
 
-      const preview = document.createElement("div"); preview.className="hint";
-      const steps = Array.isArray(s.steps) ? s.steps : (s.steps? s.steps.split("\n"): []);
-      preview.textContent = steps.length ? "• "+steps.slice(0,3).join(" / ") + (steps.length>3?" …":"") : (s.desc||"");
+function renderCard(s){
+  const card = document.createElement("div"); card.className="session card";
 
-      const actions = document.createElement("div"); actions.className="actions";
-      const fav = document.createElement("button"); fav.className="btn small fav"+(s.fav?" active":""); fav.innerHTML = s.fav?"⭐ Favori":"☆ Favori";
-      fav.onclick=()=>{ s.fav=!s.fav; upsert(s); render(); };
-      const plan = document.createElement("button"); plan.className="btn small"; plan.textContent="Planifier";
-      plan.title="Créer un évènement dans le calendrier";
-      plan.onclick=()=>{
-        window.__GRC_tabs?.activate('cal');
-        const date = window.GRC_Calendar?.getSelectedDate?.() || new Date().toISOString().slice(0,10);
-        window.GRC_Calendar?.openEventForm({
-          date,
-          title: s.title,
-          description: composeDescription(s),
-          color: "#ffd166"
-        });
-      };
-      const edit = document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier";
-      edit.onclick=()=> openModalSession(s);
-      const delBtn = document.createElement("button"); delBtn.className="btn small danger"; delBtn.textContent="Supprimer";
-      delBtn.onclick=()=>{ if(confirm("Supprimer cette séance ?")){ del(s.id); render(); } };
+  // ===== Head
+  const head = document.createElement("div"); head.className="head";
+  const title = document.createElement("div");
+  title.style.fontWeight = "800";
+  title.textContent = s.title;
+  title.style.cursor = "pointer";
+  title.onclick = () => {
+    if (window.GRC_IsAdmin) return openModalSession(s);
+    if (typeof openWorkoutView === "function") return openWorkoutView(s);
+    alert("Lecture seule — demande à un admin si tu veux modifier.");
+  };
+  const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = s.type;
+  head.appendChild(title); head.appendChild(tag);
 
-      actions.appendChild(fav); actions.appendChild(plan); actions.appendChild(edit); actions.appendChild(delBtn);
+  // ===== Meta
+  const meta = document.createElement("div"); meta.className="meta";
+  const dur  = document.createElement("span"); dur.className="pill"; dur.textContent = `${s.duration || "-"} min`;
+  const inten= document.createElement("span"); inten.className="pill"; inten.textContent = `Intensité : ${s.intensity}`;
+  if (s.tags && s.tags.length){
+    const t = document.createElement("span"); t.className="pill"; t.textContent = "# " + s.tags.join(", ");
+    meta.appendChild(t);
+  }
+  meta.appendChild(dur); meta.appendChild(inten);
 
-      card.appendChild(head);
-      card.appendChild(meta);
-      card.appendChild(preview);
-      card.appendChild(actions);
-      return card;
+  // ===== Preview (structure -> liste ; sinon steps/desc)
+  const preview = document.createElement("div");
+  const hasStruct = Array.isArray(s.structure) && s.structure.length && (typeof renderStructureList === "function");
+  if (hasStruct){
+    preview.appendChild(renderStructureList(s.structure));
+  } else {
+    const steps = Array.isArray(s.steps) ? s.steps : (s.steps ? String(s.steps).split("\n") : []);
+    const txt = steps.length
+      ? "• " + steps.slice(0,3).join(" / ") + (steps.length > 3 ? " …" : "")
+      : (s.desc || "");
+    const p = document.createElement("div"); p.className = "hint"; p.textContent = txt;
+    preview.appendChild(p);
+  }
+
+  // ===== Actions
+  const actions = document.createElement("div"); actions.className="actions";
+
+  // Voir (lecture seule pour coureurs ; fallback alerte si la modale lecture n'est pas branchée)
+  const viewBtn = document.createElement("button"); viewBtn.className="btn small"; viewBtn.textContent="Voir";viewBtn.dataset.public = "1"; 
+viewBtn.onclick = () => {
+  if (typeof openWorkoutView === "function") {
+    return openWorkoutView(s); // coureurs ET admins -> lecture seule
+  }
+  if (window.GRC_IsAdmin) {
+    return openModalSession(s); // fallback édition admin
+  }
+  alert("Lecture seule — demande à un admin si tu veux modifier.");
+};
+
+  actions.appendChild(viewBtn);
+
+  // Planifier (disponible pour tous)
+  const plan = document.createElement("button"); plan.className="btn small"; plan.textContent="Planifier";plan.dataset.public = "1";   
+  plan.title = "Créer un évènement dans le calendrier";
+  plan.onclick = () => {
+    window.__GRC_tabs?.activate('cal');
+    const date = window.GRC_Calendar?.getSelectedDate?.() || new Date().toISOString().slice(0,10);
+    window.GRC_Calendar?.openEventForm({
+      date,
+      title: s.title,
+      description: composeDescription(s),
+      color: "#ffd166"
+    });
+  };
+  actions.appendChild(plan);
+
+  // Boutons réservés aux admins
+  if (window.GRC_IsAdmin){
+    const fav = document.createElement("button"); fav.className = "btn small fav" + (s.fav ? " active" : "");
+    fav.innerHTML = s.fav ? "⭐ Favori" : "☆ Favori";
+    fav.onclick = () => { s.fav = !s.fav; upsert(s); render(); };
+
+    const edit = document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier";
+    edit.onclick = () => openModalSession(s);
+
+    const delBtn = document.createElement("button"); delBtn.className="btn small danger"; delBtn.textContent="Supprimer";
+    delBtn.onclick = () => { if (confirm("Supprimer cette séance ?")) { del(s.id); render(); } };
+
+    actions.appendChild(fav);
+    actions.appendChild(edit);
+    actions.appendChild(delBtn);
+  }
+
+  // ===== Assemble
+  card.appendChild(head);
+  card.appendChild(meta);
+  card.appendChild(preview);
+  card.appendChild(actions);
+  return card;
+}
+
+
+function composeDescription(s){
+  const tags = s.tags && s.tags.length ? `Tags : ${s.tags.join(", ")}` : "";
+  const struct = Array.isArray(s.structure) ? s.structure : normalizeStructure(s);
+  const lines = structureToLines(struct);
+  return [
+    s.desc || "",
+    lines.length ? ("Séance :\n- " + lines.join("\n- ")) : "",
+    `Type : ${s.type} • Intensité : ${s.intensity} • ${s.duration||"-"} min`,
+    tags
+  ].filter(Boolean).join("\n\n");
+}
+
+function renderStepsList(steps){
+  const ul = document.createElement('ul'); ul.className = 'ul-steps';
+  (steps||[]).forEach(line=>{
+    const li = document.createElement('li'); li.className='li-step';
+    const dot = document.createElement('span'); dot.className='dot';
+    const cont = document.createElement('div');
+    const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent = line;
+    cont.appendChild(title);
+    li.appendChild(dot); li.appendChild(cont);
+    ul.appendChild(li);
+  });
+  return ul;
+}
+
+function openWorkoutView(s){
+  const modal = document.getElementById('modalWorkoutView');
+  const title = document.getElementById('woViewTitle');
+  const meta  = document.getElementById('woViewMeta');
+  const stepsWrap = document.getElementById('woViewSteps');
+  const desc  = document.getElementById('woViewDesc');
+  const tags  = document.getElementById('woViewTags');
+
+  title.textContent = s.title || "Séance";
+  meta.textContent  = `Type : ${s.type} • Intensité : ${s.intensity} • ${s.duration||"-"} min`;
+  stepsWrap.innerHTML = "";
+  const steps = Array.isArray(s.steps) ? s.steps : (s.steps? s.steps.split("\n"): []);
+  if(steps.length){
+    const head = document.createElement('div'); head.className='hint'; head.style.fontWeight='700'; head.textContent='Structure';
+    stepsWrap.appendChild(head);
+    stepsWrap.appendChild(renderStepsList(steps));
+  }
+  desc.textContent = s.desc || "";
+  tags.textContent = (s.tags && s.tags.length) ? ("Tags : " + s.tags.join(", ")) : "";
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+}
+
+(function wireWorkoutViewClose(){
+  const modal = document.getElementById('modalWorkoutView');
+  const close = document.getElementById('woViewClose');
+  close?.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+  modal?.addEventListener('click', (e)=>{ if(e.target===modal){ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }});
+})();
+
+
+
+    function renderStructureList(struct){
+  const ul = document.createElement('ul'); ul.className='ul-steps';
+  (struct||[]).forEach(node=>{
+    if(node.kind==='step'){
+      const li = document.createElement('li'); li.className='li-step';
+      const dot = document.createElement('span'); dot.className='dot';
+      const cont = document.createElement('div');
+      const title = document.createElement('div'); title.style.fontWeight='700'; title.textContent = node.title || 'Étape';
+      const details = document.createElement('div'); details.className='li-details'; details.textContent = node.details || '';
+      cont.appendChild(title); if(node.details) cont.appendChild(details);
+      li.appendChild(dot); li.appendChild(cont);
+      ul.appendChild(li);
+    } else if(node.kind==='loop'){
+      const li = document.createElement('li'); li.className='li-loop';
+      const head = document.createElement('div'); head.className='head';
+      head.innerHTML = `<span class="badge">×${node.times||2}</span><span>Boucle</span>`;
+      li.appendChild(head);
+      li.appendChild(renderStructureList(node.children||[]));
+      ul.appendChild(li);
     }
+  });
+  return ul;
+}
 
-    function composeDescription(s){
-      const tags = s.tags && s.tags.length ? `Tags : ${s.tags.join(", ")}` : "";
-      const steps = Array.isArray(s.steps) ? s.steps : (s.steps? s.steps.split("\n"): []);
-      return [s.desc||"", steps.length?("Structure :\n- "+steps.join("\n- ")):"", `Type : ${s.type} • Intensité : ${s.intensity} • ${s.duration||"-"} min`, tags].filter(Boolean).join("\n\n");
-    }
 
     /* Form submit */
     els.form.addEventListener('submit',(e)=>{
       e.preventDefault();
-      const obj = {
-        id: els.wId.value || `w_${Date.now()}`,
-        title: els.wTitle.value.trim(),
-        type: els.wType.value,
-        duration: parseInt(els.wDuration.value||"0",10) || 0,
-        intensity: els.wIntensity.value,
-        steps: els.wSteps.value ? els.wSteps.value.split("\n").map(x=>x.trim()).filter(Boolean) : [],
-        desc: els.wDesc.value.trim(),
-        tags: els.wTags.value ? els.wTags.value.split(",").map(x=>x.trim()).filter(Boolean) : [],
-        fav: false
-      };
+const struct = _builderData && _builderData.length ? _builderData : normalizeStructure({});
+const obj = {
+  id: els.wId.value || `w_${Date.now()}`,
+  title: els.wTitle.value.trim(),
+  type: els.wType.value,
+  duration: parseInt(els.wDuration.value||"0",10) || 0,
+  intensity: els.wIntensity.value,
+  // legacy plain text (pour recherche/export/Event compose)
+  steps: structureToLines(struct),
+  // nouveau modèle riche
+  structure: struct,
+  desc: els.wDesc.value.trim(),
+  tags: els.wTags.value ? els.wTags.value.split(",").map(x=>x.trim()).filter(Boolean) : [],
+  fav: false
+};
+
       if(!obj.title){ els.wTitle.focus(); return; }
       upsert(obj); closeModalSession(); render();
     });
@@ -1028,16 +1611,31 @@ body.locked .views {
       color.style.background = ev.color || '#ffd166';
       head.appendChild(left); head.appendChild(color);
 
-      const desc = document.createElement('div'); desc.className='hint'; desc.textContent = ev.description || "—";
+const desc = document.createElement('div');
+desc.className = 'hint truncate';     // ⟵ ajoute "truncate"
+desc.textContent = ev.description || "—";
+
+
+
 
       const actions = document.createElement('div'); actions.className='ev-actions';
       const openBtn = document.createElement('button'); openBtn.className='btn small'; openBtn.textContent='Ouvrir / Modifier';
-      openBtn.onclick=()=>{ window.__GRC_tabs?.activate('cal'); window.GRC_Calendar?.openEventForm(ev); };
+openBtn.onclick=()=>{ 
+  window.__GRC_tabs?.activate('cal'); 
+  (window.GRC_Calendar?.openFormOrView || window.GRC_Calendar?.openEventForm)(ev);
+};
+
       const unspec = document.createElement('button'); unspec.className='btn small'; unspec.textContent='Retirer des spéciaux';
       unspec.onclick=()=>{ toggleSpecial(ev,false); };
       actions.appendChild(openBtn); actions.appendChild(unspec);
 
-      c.appendChild(head); c.appendChild(desc); c.appendChild(actions);
+ c.appendChild(head);
+ c.appendChild(desc);
+ if ((ev.description || "").length > 260) c.appendChild(toggle);
+ c.appendChild(actions);
+
+
+
       return c;
     }
 
@@ -1133,6 +1731,9 @@ body.locked .views {
     { id: 'poitiers',     label: 'Poitiers' },
   ];
   const CLUB = "golden-running-club"; // catalogue commun
+  // après la const CLUBS = [...]
+window.GRC_CLUBS = CLUBS;
+
   const clubSelect = document.getElementById('clubSelect');
   let CURRENT_CLUB = localStorage.getItem('grc_club') || 'bordeaux';
   if (clubSelect) {
@@ -1162,57 +1763,85 @@ body.locked .views {
 
   // Listeners Firestore (démarrés après login)
   let unsubs = [];
-  function startRealtime(){
-    if(unsubs.length) return;
+function startRealtime(){
+  if(unsubs.length) return;
 
-    // EVENTS par ville
-    const qEvents = query(
-      collection(db, "events"),
-      where("club_id","==", CURRENT_CLUB)
-    );
-    const u1 = onSnapshot(qEvents, snap => {
-      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalAndNotify(LKEY_EVENTS, arr);
-    }, err => console.error("Firestore events error:", err));
+  // EVENTS — nouveau schéma (clubs: array)
+  const qEventsNew = query(
+    collection(db, "events"),
+    where("clubs","array-contains", CURRENT_CLUB)
+  );
+  const uNew = onSnapshot(qEventsNew, snap => {
+    const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    mergeAndSetLocal(arr); // fusionnera avec legacy
+  }, err => console.error("Firestore events error:", err));
 
-    // SESSIONS catalogue commun
-    const qSessions = query(
-      collection(db, "sessions"),
-      where("club_id","==", CLUB)
-    );
-    const u2 = onSnapshot(qSessions, snap => {
-      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLocalAndNotify(LKEY_SESSIONS, arr);
-    }, err => console.error("Firestore sessions error:", err));
+  // EVENTS — legacy (club_id: string)
+  const qEventsOld = query(
+    collection(db, "events"),
+    where("club_id","==", CURRENT_CLUB)
+  );
+  const uOld = onSnapshot(qEventsOld, snap => {
+    const arr = snap.docs.map(d => ({ id: d.id, ...d.data(), clubs: d.data().clubs || [CURRENT_CLUB] }));
+    mergeAndSetLocal(arr);
+  }, err => console.error("Firestore events legacy error:", err));
 
-    unsubs.push(u1, u2);
+  function mergeAndSetLocal(incoming){
+    // fusion par id avec ce qu’on a déjà en mémoire locale (si une des deux snapshots arrive en premier)
+    let current = [];
+    try { current = JSON.parse(localStorage.getItem(LKEY_EVENTS)||"[]"); } catch {}
+    const byId = new Map(current.map(e=>[e.id,e]));
+    incoming.forEach(e=> byId.set(e.id, { ...byId.get(e.id), ...e }));
+    setLocalAndNotify(LKEY_EVENTS, Array.from(byId.values()));
   }
+
+  // SESSIONS (inchangé)
+  const qSessions = query(
+    collection(db, "sessions"),
+    where("club_id","==", CLUB)
+  );
+  const u2 = onSnapshot(qSessions, snap => {
+    const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setLocalAndNotify(LKEY_SESSIONS, arr);
+  }, err => console.error("Firestore sessions error:", err));
+
+  unsubs.push(uNew, uOld, u2);
+}
+
   function stopRealtime(){ unsubs.forEach(fn => { try{ fn(); }catch{} }); unsubs = []; }
 
   // localStorage -> Firestore (écrit seulement si connecté)
   const _origSetItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function(key, value){
-    _origSetItem(key, value);
-    if(_remoteApply) return;
-    if(!auth.currentUser) return;           // pas connecté
-    if(!window.GRC_IsAdmin) return;         // non-admin : on ne tente pas (UI+Rules bloquent)
+localStorage.setItem = function(key, value){
+  _origSetItem(key, value);
+  if(_remoteApply) return;
+  if(!auth.currentUser) return;
+  if(!window.GRC_IsAdmin) return;
 
-    try{
-      if(key !== LKEY_EVENTS && key !== LKEY_SESSIONS) return;
-      const arr = JSON.parse(value || "[]");
-      const collName = key === LKEY_EVENTS ? "events" : "sessions";
+  try{
+    if(key !== LKEY_EVENTS && key !== LKEY_SESSIONS) return;
+    const arr = JSON.parse(value || "[]");
+    const collName = key === LKEY_EVENTS ? "events" : "sessions";
 
-      // upsert
-      arr.forEach(o=>{
-        const id = o.id || doc(collection(db, collName)).id;
-        o.id = id;
-        const payload = { ...o, club_id: (collName === 'events' ? CURRENT_CLUB : CLUB) };
-        setDoc(doc(db, collName, id), payload, { merge: true }).catch(console.warn);
-      });
+    arr.forEach(o=>{
+      const id = o.id || doc(collection(db, collName)).id;
+      o.id = id;
 
-      // (Les suppressions peuvent être gérées dans l’UI si besoin)
-    }catch(e){ console.warn(e); }
-  };
+      let payload;
+      if(collName === 'events'){
+        const clubs = Array.isArray(o.clubs) && o.clubs.length ? o.clubs
+                      : (o.club_id ? [o.club_id] : [localStorage.getItem('grc_club') || 'bordeaux']);
+        payload = { ...o, clubs };
+        delete payload.club_id; // on retire l’ancien champ côté write
+      } else {
+        payload = { ...o, club_id: CLUB }; // catalogue commun inchangé
+      }
+
+      setDoc(doc(db, collName, id), payload, { merge: true }).catch(console.warn);
+    });
+  }catch(e){ console.warn(e); }
+};
+
 
   /* =======================
      Auth + Rôles
@@ -1275,11 +1904,19 @@ body.locked .views {
       const cal = document.querySelector('.calendar');
       cal && cal.addEventListener('dblclick', (e)=>{ if(!window.GRC_IsAdmin){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); } }, true);
 
-      const list = document.getElementById('workoutList');
-      list && list.addEventListener('click', (e)=>{
-        const t = e.target;
-        if(!window.GRC_IsAdmin && t.closest?.('.actions')){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); }
-      }, true);
+const list = document.getElementById('workoutList');
+list && list.addEventListener('click', (e)=>{
+  const t = e.target;
+  if (!window.GRC_IsAdmin && t.closest?.('.actions')) {
+    // ✅ Laisse passer les boutons marqués "public"
+    const btn = t.closest('button');
+    if (btn?.dataset.public === "1") return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    openModal();
+  }
+}, true);
+
 
       const dayList = document.getElementById('eventList');
       dayList && dayList.addEventListener('click', (e)=>{
@@ -1417,13 +2054,15 @@ body.locked .views {
   });
 
   // Changement de ville
-  clubSelect?.addEventListener('change', ()=>{
-    CURRENT_CLUB = clubSelect.value;
-    localStorage.setItem('grc_club', CURRENT_CLUB);
-    localStorage.setItem(LKEY_EVENTS, "[]");
-    window.dispatchEvent(new Event('grc:events-changed'));
-    stopRealtime(); startRealtime();
-  });
+clubSelect?.addEventListener('change', ()=>{
+  CURRENT_CLUB = clubSelect.value;
+  localStorage.setItem('grc_club', CURRENT_CLUB);
+
+  // ⚠️ Ne plus vider les events du cache ici !
+  // On redémarre simplement les listeners Firestore
+  stopRealtime();
+  startRealtime();
+});
 
   // Au chargement, bloque si pas connecté
   document.addEventListener('DOMContentLoaded', ()=>{
