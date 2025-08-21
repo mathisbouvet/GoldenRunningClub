@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Golden Running Club — Dashboard</title>
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --panel:#12131a;
+      --panel-2:#171925;
+      --text:#e8ecf1;
+      --muted:#9aa4ad;
+      --brand:#ffd166;
+      --accent:#00d1b2;
+      --danger:#ff5c7a;
+      --ring:#2b2f3a;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius:16px;
+      --success:#4cd964;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f6f7fb; --panel:#ffffff; --panel-2:#f2f4f8; --text:#111318; --muted:#586174; --ring:#dfe3ea;
+        --shadow: 0 12px 24px rgba(17,19,24,.06);
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, "Noto Sans";
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(255,209,102,.08), transparent 60%), var(--bg);
+      color:var(--text);
+    }
+
+    body.locked .topbar,
+body.locked .views {
+  filter: blur(6px);
+  pointer-events: none;
+  user-select: none;
+  transition: filter .2s ease;
+}
+
+    /* Topbar + Tabs */
+    .topbar{
+      max-width:1200px; margin:18px auto 0; padding:0 16px 8px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    }
+    .brand{display:flex; align-items:center; gap:10px}
+    .logo{width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,var(--brand),#ffe089); box-shadow:inset 0 0 0 2px #00000022}
+    .brand h1{font-size:18px; margin:0}
+    .tabs{display:flex; gap:8px; flex-wrap:wrap}
+    .tab{
+      appearance:none; border:1px solid var(--ring); background:rgba(255,255,255,.03);
+      color:var(--text); padding:8px 12px; border-radius:12px; font-weight:800; cursor:pointer;
+    }
+    .tab[aria-selected="true"]{background:var(--brand); color:#1c1400; border-color:transparent}
+
+    /* Generic buttons/inputs */
+    .btn{
+      appearance:none; border:1px solid var(--ring); background:transparent; color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; font-weight:700;
+      display:inline-flex; align-items:center; gap:8px; transition:.2s;
+    }
+    .btn:hover{background:rgba(255,255,255,.05)}
+    .btn.small{padding:6px 10px; font-size:14px}
+    .btn.primary{background:var(--brand); color:#1c1400; border-color:transparent}
+    .btn.ghost{border-color:transparent; background:rgba(255,255,255,.05)}
+    .btn.danger{background:var(--danger); color:#fff; border-color:transparent}
+
+    input[type="text"], input[type="number"], input[type="time"], input[type="date"], textarea, select{
+      width:100%; border:1px solid var(--ring); background:rgba(255,255,255,.03); color:var(--text);
+      padding:10px 12px; border-radius:10px; outline:none; font-size:14px;
+    }
+    textarea{min-height:90px; resize:vertical}
+    .chip{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--ring); border-radius:999px; background:rgba(255,255,255,.04); font-weight:700; font-size:12px}
+    .dot{width:8px; height:8px; border-radius:50%}
+    .hint{font-size:12px; color:var(--muted)}
+    .card{
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid var(--ring);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .sep{height:1px; background:var(--ring); margin:6px 0}
+
+    /* VIEWS WRAPPER */
+    .views{max-width:1200px; margin:0 auto; padding:0 16px 28px}
+    .view{display:none}
+    .view.active{display:block}
+
+    /* ==== CALENDAR LAYOUT ==== */
+    .calendar-wrap{margin-top:12px; display:grid; grid-template-columns: 1.8fr .95fr; gap:18px}
+    @media (max-width: 980px){ .calendar-wrap{grid-template-columns: 1fr; gap:16px} }
+    .calendar{padding:14px}
+    .cal-header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px 14px}
+    .cal-title{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+    .cal-title h2{font-size:22px; margin:0; font-weight:700}
+    .cal-title .sub{font-size:14px; color:var(--muted)}
+    .week{display:grid; grid-template-columns: repeat(7,1fr); gap:8px; padding:0 6px 10px; color:var(--muted); font-weight:700; font-size:12px; text-transform:uppercase}
+    .grid{display:grid; grid-template-columns: repeat(7,1fr); gap:8px; padding:0 6px 6px}
+    .day{position:relative; min-height:110px; border:1px solid var(--ring); border-radius:12px; padding:10px; background:rgba(255,255,255,.02); transition:.2s}
+    .day:hover{border-color:#6c7a8b77; background:rgba(255,255,255,.04)}
+    .day.today{outline:2px solid var(--brand); box-shadow:inset 0 0 0 2px rgba(0,0,0,.06)}
+    .day.out{opacity:.5}
+    .day .date{font-size:13px; font-weight:700; color:var(--muted); display:flex; align-items:center; justify-content:space-between; gap:8px}
+    .day .date .add{opacity:0; transform:translateY(-4px); transition:.18s; border-radius:8px}
+    .day:hover .date .add{opacity:1; transform:none}
+    .badges{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px}
+    .badge{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 8px; font-weight:700; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--ring); cursor:pointer; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+    /* Sidebar calendrier */
+    .side{padding:16px; display:flex; flex-direction:column; gap:14px}
+    .side .section-title{font-size:14px; color:var(--muted); text-transform:uppercase; font-weight:800; letter-spacing:.3px}
+    .event-list{display:flex; flex-direction:column; gap:8px; max-height:520px; overflow:auto; padding-right:2px}
+    .event{display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:12px; border:1px solid var(--ring); background:rgba(255,255,255,.02)}
+    .event .time{font-weight:800; font-size:12px; color:var(--muted); min-width:62px}
+    .event .title{font-weight:800}
+    .empty{color:var(--muted); font-style:italic; padding:10px 0}
+
+    /* ==== CATALOGUE ==== */
+    .catalog{padding:14px; margin-top:12px}
+    .filters{display:grid; grid-template-columns: 1.2fr .8fr .8fr .8fr .8fr auto; gap:10px; margin-top:6px}
+    @media (max-width: 980px){ .filters{grid-template-columns: 1fr 1fr} }
+    .list{display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:12px}
+    @media (max-width: 980px){ .list{grid-template-columns: 1fr} }
+    .session{padding:14px; border:1px solid var(--ring); border-radius:14px; background:rgba(255,255,255,.02); display:flex; flex-direction:column; gap:8px}
+    .session .head{display:flex; justify-content:space-between; align-items:flex-start; gap:8px}
+    .tag{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:#111; background:var(--brand); border-radius:999px; padding:4px 8px}
+    .meta{display:flex; gap:8px; flex-wrap:wrap}
+    .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+    .fav.active{background:rgba(255,255,255,.12)}
+    .pill{padding:4px 8px; border:1px solid var(--ring); border-radius:999px; font-weight:700; font-size:12px}
+
+    /* ==== EVENEMENTS SPECIAUX ==== */
+    .events{padding:14px; margin-top:12px}
+    .events .toolbar{display:grid; grid-template-columns: 1.2fr .8fr .8fr auto; gap:10px}
+    @media (max-width: 980px){ .events .toolbar{grid-template-columns: 1fr 1fr} }
+    .ev-list{display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-top:12px}
+    @media (max-width: 980px){ .ev-list{grid-template-columns: 1fr} }
+    .ev-card{padding:14px; border:1px solid var(--ring); border-radius:14px; background:rgba(255,255,255,.02); display:flex; flex-direction:column; gap:8px}
+    .ev-head{display:flex; justify-content:space-between; gap:10px}
+    .ev-date{font-weight:800; color:var(--muted)}
+    .ev-title{font-weight:900}
+    .ev-actions{display:flex; gap:8px; flex-wrap:wrap}
+
+    /* Small scrollbar */
+    ::-webkit-scrollbar{height:10px;width:10px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:#9aa4ad33;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+    ::-webkit-scrollbar-thumb:hover{background:#9aa4ad55;border:2px solid transparent}
+
+    /* ==== POPUPS / MODALES ==== */
+.modal{
+  position: fixed;
+  inset: 0;
+  display: none;              /* cachée par défaut */
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0,0,0,.45); /* voile */
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+.modal.open{ display: flex; }  /* on l'affiche quand .open est ajouté */
+
+.modal .dialog{
+  width: min(640px, 100%);
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  border: 1px solid var(--ring);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+/* Un peu de mise en forme des formulaires modales */
+.form{ display:flex; flex-direction:column; gap:10px; }
+.form .row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+@media (max-width: 640px){ .form .row{ grid-template-columns: 1fr; } }
+
+  </style>
+</head>
+
+
+
+
+
+
+
+
+<body>
+  <!-- Topbar with tabs -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <h1>Golden Running Club — Dashboard</h1>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Outils">
+    <button class="tab" role="tab" id="tab-cal" aria-controls="view-cal" aria-selected="true">Calendrier</button>
+    <button class="tab" role="tab" id="tab-cat" aria-controls="view-cat" aria-selected="false">Catalogue de séances</button>
+    <button class="tab" role="tab" id="tab-ev"  aria-controls="view-ev"  aria-selected="false">Événements</button>
+  </div>
+  <button class="tab" role="tab" id="tab-social" aria-controls="view-social" aria-selected="false">Social</button>
+
+
+  <!-- Auth status DANS la topbar -->
+  <div id="authStatus" style="display:flex;gap:8px;align-items:center;margin-left:auto">
+    <span id="roleBadge" class="chip">Rôle : visiteur</span>
+    <button id="authOpen" class="btn small">Se connecter</button>
+    <button id="authOut"  class="btn small" style="display:none">Se déconnecter</button>
+  </div>
+  <!-- Sélecteur de club/ville -->
+<div class="chip" style="margin-left:auto">
+  <span class="hint" style="margin-right:6px">Ville</span>
+  <select id="clubSelect"></select>
+</div>
+
+
+</div>
+
+
+
+  <div class="views">
+    <!-- ======= VIEW: CALENDAR ======= -->
+    <section class="view active" id="view-cal" role="tabpanel" aria-labelledby="tab-cal">
+      <div class="calendar-wrap">
+        <!-- Calendrier -->
+        <section class="card calendar" aria-label="Calendrier mensuel">
+          <div class="cal-header">
+            <div class="cal-title">
+              <h2 id="monthLabel">Mois Année</h2>
+              <div class="sub" id="todayLabel"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn small" id="prevBtn" aria-label="Mois précédent">⟵</button>
+              <button class="btn small" id="nextBtn" aria-label="Mois suivant">⟶</button>
+              <button class="btn small ghost" id="todayBtn">Aujourd’hui</button>
+              <button class="btn primary small" id="addBtn">+ Nouvel évènement</button>
+            </div>
+          </div>
+
+          <div class="week" aria-hidden="true">
+            <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+          </div>
+          <div class="grid" id="grid" role="grid" aria-label="Grille du calendrier"></div>
+        </section>
+
+        <!-- Panneau latéral -->
+        <aside class="card side" aria-label="Événements du jour">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div class="section-title">Événements</div>
+              <div id="selectedDateLabel" class="hint"></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn small" id="exportBtn" title="Exporter les événements en JSON">Exporter</button>
+              <label class="btn small ghost" title="Importer des événements (JSON)">
+                Importer<input id="importEvents" type="file" accept="application/json" style="display:none">
+              </label>
+            </div>
+          </div>
+          <div class="event-list" id="eventList"></div>
+          <div class="sep"></div>
+          <div class="hint">Astuce : double-clique sur un jour pour créer rapidement un évènement à cette date.</div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ======= VIEW: CATALOGUE ======= -->
+    <section class="view" id="view-cat" role="tabpanel" aria-labelledby="tab-cat">
+      <section class="card catalog">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="section-title" style="text-transform:uppercase; font-weight:800; color:var(--muted); letter-spacing:.3px">Catalogue de séances</div>
+            <div class="hint">Filtre, favorise ⭐ et planifie directement dans le calendrier.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary small" id="addWorkoutBtn">+ Nouvelle séance</button>
+            <button class="btn small" id="exportSessions">Exporter</button>
+            <label class="btn small ghost">Importer
+              <input id="importSessions" type="file" accept="application/json" style="display:none">
+            </label>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input type="text" id="q" placeholder="Rechercher (titre, tags, contenu…)" />
+          <select id="typeFilter">
+            <option value="">Type — Tous</option>
+            <option>Fractionné</option><option>Seuil</option><option>Endurance</option><option>VMA</option>
+            <option>Côtes</option><option>Musculation</option><option>PPG</option><option>Trail</option><option>Récupération</option>
+          </select>
+          <select id="intensityFilter">
+            <option value="">Intensité — Toutes</option>
+            <option>Faible</option><option>Moyenne</option><option>Élevée</option>
+          </select>
+          <select id="durationFilter">
+            <option value="">Durée</option>
+            <option value="0-35">≤ 35 min</option>
+            <option value="36-60">36–60 min</option>
+            <option value="61-90">61–90 min</option>
+            <option value="91-10000">> 90 min</option>
+          </select>
+          <select id="sortBy">
+            <option value="title">Tri : Titre A→Z</option>
+            <option value="duration">Tri : Durée</option>
+            <option value="type">Tri : Type</option>
+            <option value="fav">Tri : Favoris</option>
+          </select>
+          <label class="chip"><input type="checkbox" id="onlyFav" style="accent-color:#111; margin-right:6px">⭐ Favoris</label>
+        </div>
+
+        <div class="list" id="workoutList"></div>
+      </section>
+    </section>
+
+    <!-- ======= VIEW: EVENEMENTS SPECIAUX ======= -->
+    <section class="view" id="view-ev" role="tabpanel" aria-labelledby="tab-ev">
+      <section class="card events">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="section-title" style="text-transform:uppercase; font-weight:800; color:var(--muted); letter-spacing:.3px">Événements spéciaux</div>
+            <div class="hint">Cochés “Événement spécial” dans le calendrier.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn small" id="goCalendar">Aller au calendrier</button>
+          </div>
+        </div>
+
+        <div class="toolbar" style="margin-top:8px">
+          <input type="text" id="evSearch" placeholder="Rechercher (titre, description)…" />
+          <select id="evStatus">
+            <option value="upcoming">À venir</option>
+            <option value="past">Passés</option>
+            <option value="all">Tous</option>
+          </select>
+          <select id="evSort">
+            <option value="date">Tri : Date</option>
+            <option value="title">Tri : Titre</option>
+          </select>
+          <label class="chip"><input type="checkbox" id="evToday" style="accent-color:#111; margin-right:6px">Uniquement aujourd’hui</label>
+        </div>
+
+        <div class="ev-list" id="evList"></div>
+      </section>
+    </section>
+  </div>
+
+  <!-- ======= MODAL: ÉVÈNEMENT (CALENDRIER) ======= -->
+  <div class="modal" id="modalEvent" aria-hidden="true" aria-modal="true" role="dialog">
+    <div class="dialog">
+      <div class="cal-header" style="padding:0 0 10px 0">
+        <div class="cal-title">
+          <h2 id="formTitle">Nouvel évènement</h2>
+          <div class="sub" id="formDateHint"></div>
+        </div>
+        <div><button class="btn small" id="closeEventBtn" aria-label="Fermer">✕</button></div>
+      </div>
+      <form id="eventForm" class="form">
+        <input type="hidden" id="eventId" />
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Titre</div>
+          <input type="text" id="titleInput" placeholder="Sortie club, séance piste, …" required />
+        </div>
+        <div class="row">
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Date</div>
+            <input type="date" id="dateInput" required />
+          </div>
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Heure</div>
+            <input type="time" id="timeInput" value="19:00" />
+          </div>
+        </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Description</div>
+          <textarea id="descInput" placeholder="Détails, lieu, allure, matériel…"></textarea>
+        </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Couleur</div>
+          <div class="colors" id="colorRow" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap"></div>
+        </div>
+        <label class="chip" style="width:max-content; margin-top:4px">
+          <input type="checkbox" id="specialInput" style="accent-color:#111; margin-right:6px">★ Événement spécial
+        </label>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:6px">
+          <div class="hint">Enregistré dans ton navigateur (localStorage).</div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn danger" id="deleteBtn" style="display:none">Supprimer</button>
+            <button type="submit" class="btn primary">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======= MODAL: SÉANCE (CATALOGUE) ======= -->
+  <div class="modal" id="modalWorkout" aria-hidden="true" aria-modal="true" role="dialog">
+    <div class="dialog">
+      <div class="cal-header" style="padding:0 0 10px 0">
+        <div class="cal-title">
+          <h2 id="wFormTitle">Nouvelle séance</h2>
+          <div class="sub" id="wFormHint">Ajoute la structure et les tags ci-dessous</div>
+        </div>
+        <div><button class="btn small" id="closeWorkoutBtn" aria-label="Fermer">✕</button></div>
+      </div>
+      <form id="workoutForm" class="form">
+        <input type="hidden" id="workoutId" />
+        <div class="row">
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Titre</div>
+            <input type="text" id="wTitle" placeholder="Ex : 10×400m (r:1’)" required />
+          </div>
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Type</div>
+            <select id="wType" required>
+              <option>Fractionné</option><option>Seuil</option><option>Endurance</option><option>VMA</option>
+              <option>Côtes</option><option>Musculation</option><option>PPG</option><option>Trail</option><option>Récupération</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Durée (min)</div>
+            <input type="number" id="wDuration" min="10" max="300" step="1" value="60" />
+          </div>
+          <div>
+            <div class="hint" style="font-weight:700;margin-bottom:6px">Intensité</div>
+            <select id="wIntensity"><option>Faible</option><option>Moyenne</option><option>Élevée</option></select>
+          </div>
+        </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Structure (une étape par ligne)</div>
+          <textarea id="wSteps" placeholder="Ex :&#10;15’ Échauffement&#10;10×400m à 5K pace (r:1’)&#10;10’ Retour au calme"></textarea>
+        </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Description / Notes</div>
+          <textarea id="wDesc" placeholder="Objectif, repères d’allure, matériel..."></textarea>
+        </div>
+        <div>
+          <div class="hint" style="font-weight:700;margin-bottom:6px">Tags (séparés par des virgules)</div>
+          <input type="text" id="wTags" placeholder="piste, 5K, vitesse" />
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:6px">
+          <div class="hint">Astuce : ‘Planifier’ depuis une carte remplira automatiquement un évènement.</div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn danger" id="wDelete" style="display:none">Supprimer</button>
+            <button type="submit" class="btn primary">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <section id="view-social" class="view" role="tabpanel" aria-labelledby="tab-social" hidden>
+  <div class="panel" style="display:flex;gap:16px;flex-wrap:wrap">
+    <div class="card">
+      <h3>Mon Strava</h3>
+      <p id="stravaStatus" class="hint">Non connecté à Strava.</p>
+      <button id="btnConnectStrava" class="btn primary">Connecter Strava</button>
+    </div>
+    <div class="card">
+      <h3>Stats récentes</h3>
+      <ul id="socialStats" class="list-plain">
+        <li>7 jours : <span id="stat7d">–</span></li>
+        <li>4 semaines : <span id="stat4w">–</span></li>
+        <li>Année (YTD) : <span id="statYtd">–</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Dernières activités</h3>
+    <ul id="socialFeed" class="list">
+      <!-- rempli en temps réel -->
+    </ul>
+  </div>
+</section>
+
+
+  <script>
+  /* ========= Tabs (switch views) ========= */
+  (function(){
+    const tabCal = document.getElementById('tab-cal');
+    const tabCat = document.getElementById('tab-cat');
+    const tabEv  = document.getElementById('tab-ev');
+    const viewCal = document.getElementById('view-cal');
+    const viewCat = document.getElementById('view-cat');
+    const viewEv  = document.getElementById('view-ev');
+    function activate(which){
+      const m = {cal:false,cat:false,ev:false}; m[which]=true;
+      tabCal.setAttribute('aria-selected', m.cal); viewCal.classList.toggle('active', m.cal);
+      tabCat.setAttribute('aria-selected', m.cat); viewCat.classList.toggle('active', m.cat);
+      tabEv .setAttribute('aria-selected', m.ev ); viewEv .classList.toggle('active',  m.ev);
+    }
+    tabCal.addEventListener('click', ()=> activate('cal'));
+    tabCat.addEventListener('click', ()=> activate('cat'));
+    tabEv .addEventListener('click', ()=> activate('ev'));
+    window.__GRC_tabs = { activate };
+  })();
+
+  /* ========= CALENDRIER ========= */
+  (function(){
+    const MONTHS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+
+    const pad = n => String(n).padStart(2,'0');
+    const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const fromYMD = (s) => { const [y,m,d] = s.split("-").map(Number); return new Date(y,(m-1),d); };
+    const mondayIndex = jsDay => (jsDay + 6) % 7;
+    const isSameDay = (a,b) => a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+
+    /* Storage */
+    const STORAGE_KEY = "grc_events";
+    const readEvents = () => { try{ return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch(e){ return []; } };
+    const writeEvents = (arr) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); window.dispatchEvent(new Event('grc:events-changed')); };
+    const upsertEvent = (evt) => { const arr = readEvents(); const i = arr.findIndex(e => e.id===evt.id); if(i>=0) arr[i]=evt; else arr.push(evt); writeEvents(arr); };
+    const deleteEventById = (id) => writeEvents(readEvents().filter(e => e.id !== id));
+
+    /* State + Els */
+    let state = { view: new Date(), selected: new Date() };
+    const els = {
+      monthLabel: document.getElementById("monthLabel"),
+      todayLabel: document.getElementById("todayLabel"),
+      selectedDateLabel: document.getElementById("selectedDateLabel"),
+      grid: document.getElementById("grid"),
+      eventList: document.getElementById("eventList"),
+      prevBtn: document.getElementById("prevBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      todayBtn: document.getElementById("todayBtn"),
+      addBtn: document.getElementById("addBtn"),
+      exportBtn: document.getElementById("exportBtn"),
+      importEvents: document.getElementById("importEvents"),
+      modal: document.getElementById("modalEvent"),
+      form: document.getElementById("eventForm"),
+      formTitle: document.getElementById("formTitle"),
+      formDateHint: document.getElementById("formDateHint"),
+      closeBtn: document.getElementById("closeEventBtn"),
+      deleteBtn: document.getElementById("deleteBtn"),
+      colorRow: document.getElementById("colorRow"),
+      titleInput: document.getElementById("titleInput"),
+      dateInput: document.getElementById("dateInput"),
+      timeInput: document.getElementById("timeInput"),
+      descInput: document.getElementById("descInput"),
+      specialInput: document.getElementById("specialInput"),
+      eventId: document.getElementById("eventId"),
+    };
+
+    const COLORS = ["#ffd166","#06d6a0","#4cc9f0","#a78bfa","#ff5c7a","#f6bd60","#84dcc6","#8bd3dd","#f28482","#90be6d"];
+    let selectedColor = COLORS[0];
+    function renderColorSwatches(value){
+      els.colorRow.innerHTML = "";
+      COLORS.forEach(c=>{
+        const s=document.createElement("button");
+        s.type="button"; s.className="swatch"+(c===value?" active":"");
+        s.style.cssText="width:22px;height:22px;border-radius:50%;border:2px solid #ffffff33;cursor:pointer;box-shadow:inset 0 0 0 2px #00000022"+(c===value?";outline:3px solid #ffffff99":"");
+        s.style.background=c;
+        s.onclick=()=>{ selectedColor=c; renderColorSwatches(c); };
+        els.colorRow.appendChild(s);
+      });
+    }
+
+    function renderHeader(){
+      const d = state.view;
+      els.monthLabel.textContent = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+      const now = new Date();
+      const fmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'2-digit',month:'long', timeZone: tz});
+      els.todayLabel.textContent = `Aujourd’hui : ${fmt.format(now)}`;
+      const selFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric', timeZone: tz});
+      els.selectedDateLabel.textContent = selFmt.format(state.selected);
+    }
+
+    const daysInMonth = (y,m) => new Date(y,m+1,0).getDate();
+
+    function renderGrid(){
+      const y = state.view.getFullYear(), m = state.view.getMonth();
+      const first = new Date(y,m,1);
+      const firstIndex = mondayIndex(first.getDay());
+      const totalDays = daysInMonth(y,m);
+      const prevMonthDays = daysInMonth(y, m-1<0?11:m-1);
+      const leading = firstIndex;
+      const cells = 42;
+      els.grid.innerHTML="";
+      const today = new Date();
+
+      for(let i=0;i<cells;i++){
+        const cell=document.createElement("div");
+        cell.className="day"; cell.tabIndex=0;
+        let displayDay, cellDate, out=false;
+
+        if(i < leading){ displayDay = prevMonthDays - leading + i + 1; cellDate = new Date(y,m-1,displayDay); out=true; }
+        else if(i >= leading + totalDays){ displayDay = i - (leading + totalDays) + 1; cellDate = new Date(y,m+1,displayDay); out=true; }
+        else { displayDay = i - leading + 1; cellDate = new Date(y,m,displayDay); }
+
+        if(out) cell.classList.add("out");
+        if(isSameDay(cellDate,today)) cell.classList.add("today");
+        if(isSameDay(cellDate,state.selected)) cell.style.boxShadow="inset 0 0 0 2px var(--accent)";
+
+        const head=document.createElement("div"); head.className="date";
+        const dlabel=document.createElement("div"); dlabel.textContent=displayDay;
+        const addBtn=document.createElement("button"); addBtn.className="btn small add"; addBtn.type="button"; addBtn.title="Ajouter un évènement"; addBtn.textContent="+";
+        addBtn.onclick=(e)=>{ e.stopPropagation(); openForm({ date: ymd(cellDate) }); };
+        head.appendChild(dlabel); head.appendChild(addBtn);
+
+        const badges=document.createElement("div"); badges.className="badges";
+        const list = readEvents().filter(ev=>ev.date===ymd(cellDate)).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
+        list.slice(0,3).forEach(ev=>{
+          const b=document.createElement("button"); b.type="button"; b.className="badge"; b.title=ev.title;
+          const dot=document.createElement("span"); dot.className="dot"; dot.style.background=ev.color||selectedColor;
+          const text=document.createElement("span"); text.textContent=(ev.time?ev.time+" ":"") + (ev.special?"★ ":"") + ev.title;
+          b.appendChild(dot); b.appendChild(text);
+          b.onclick=(e)=>{ e.stopPropagation(); openForm(ev); };
+          badges.appendChild(b);
+        });
+        if(list.length>3){ const more=document.createElement("span"); more.className="hint"; more.textContent=`+${list.length-3}…`; badges.appendChild(more); }
+
+        cell.appendChild(head); cell.appendChild(badges);
+        cell.onclick=()=>{ state.selected=cellDate; renderHeader(); renderSide(); renderGrid(); };
+        cell.ondblclick=()=> openForm({ date: ymd(cellDate) });
+        els.grid.appendChild(cell);
+      }
+    }
+
+    function renderSide(){
+      const ymdSel = ymd(state.selected);
+      const list = readEvents().filter(e=>e.date===ymdSel).sort((a,b)=>(a.time||"")<(b.time||"")?-1:1);
+      els.eventList.innerHTML="";
+      if(list.length===0){ const empty=document.createElement("div"); empty.className="empty"; empty.textContent="Aucun évènement pour ce jour."; els.eventList.appendChild(empty); return; }
+      list.forEach(ev=>{
+        const item=document.createElement("div"); item.className="event";
+        const dot=document.createElement("span"); dot.className="dot"; dot.style.background=ev.color||selectedColor; dot.style.marginTop="6px";
+        const time=document.createElement("div"); time.className="time"; time.textContent=ev.time||"—";
+        const body=document.createElement("div");
+        const title=document.createElement("div"); title.className="title"; title.textContent=(ev.special?"★ ":"")+ev.title;
+        const desc=document.createElement("div"); desc.className="hint"; desc.textContent=ev.description||"";
+        const actions=document.createElement("div"); actions.style.marginTop="8px";
+        const edit=document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier"; edit.onclick=()=> openForm(ev);
+        actions.appendChild(edit);
+        body.appendChild(title); if(ev.description) body.appendChild(desc); body.appendChild(actions);
+        item.appendChild(dot); item.appendChild(time); item.appendChild(body); els.eventList.appendChild(item);
+      });
+    }
+
+    function renderAll(){ renderHeader(); renderGrid(); renderSide(); }
+
+    /* Formulaire évènement */
+    function openForm(data){
+      const isEdit = !!data.id;
+      els.formTitle.textContent = isEdit ? "Modifier l’évènement" : "Nouvel évènement";
+      const hintFmt = new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric', timeZone: tz});
+      const hintDate = data.date ? fromYMD(data.date) : state.selected;
+      els.formDateHint.textContent = hintFmt.format(hintDate);
+      els.modal.classList.add("open"); els.modal.setAttribute("aria-hidden","false");
+
+      // preset
+      els.eventId.value = data.id || "";
+      els.titleInput.value = data.title || "";
+      els.dateInput.value = data.date || ymd(state.selected);
+      els.timeInput.value = data.time || "";
+      els.descInput.value = data.description || "";
+      els.specialInput.checked = !!data.special;
+      selectedColor = data.color || COLORS[0];
+      renderColorSwatches(selectedColor);
+      els.deleteBtn.style.display = isEdit ? "inline-flex" : "none";
+      setTimeout(()=> els.titleInput.focus(), 50);
+    }
+    function closeForm(){
+      els.modal.classList.remove("open"); els.modal.setAttribute("aria-hidden","true");
+      els.form.reset(); els.eventId.value=""; els.deleteBtn.style.display="none";
+    }
+    els.form.addEventListener("submit",(e)=>{
+      e.preventDefault();
+      const payload = {
+        id: els.eventId.value || `e_${Date.now()}`,
+        title: els.titleInput.value.trim(),
+        date: els.dateInput.value,
+        time: els.timeInput.value,
+        description: els.descInput.value.trim(),
+        special: !!els.specialInput.checked,
+        color: selectedColor,
+      };
+      if(!payload.title) { els.titleInput.focus(); return; }
+      if(!payload.date) { els.dateInput.focus(); return; }
+      upsertEvent(payload);
+      state.selected = fromYMD(payload.date);
+      closeForm(); renderAll();
+    });
+    els.deleteBtn.addEventListener("click",()=>{
+      const id = els.eventId.value;
+      if(id && confirm("Supprimer cet évènement ?")){ deleteEventById(id); closeForm(); renderAll(); }
+    });
+    els.closeBtn.addEventListener("click", closeForm);
+    document.addEventListener("keydown", (e)=>{ if(e.key==="Escape" && els.modal.classList.contains("open")) closeForm(); });
+    els.modal.addEventListener("click", (e)=>{ if(e.target===els.modal) closeForm(); });
+
+    /* Nav + import/export */
+    els.prevBtn.onclick = ()=>{ state.view = new Date(state.view.getFullYear(), state.view.getMonth()-1, 1); renderAll(); };
+    els.nextBtn.onclick = ()=>{ state.view = new Date(state.view.getFullYear(), state.view.getMonth()+1, 1); renderAll(); };
+    els.todayBtn.onclick = ()=>{ const now = new Date(); state.view = new Date(now.getFullYear(), now.getMonth(), 1); state.selected = now; renderAll(); };
+    els.addBtn.onclick = ()=> openForm({ date: ymd(state.selected) });
+
+    els.exportBtn.onclick = ()=>{
+      const data = readEvents();
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="grc-evenements.json"; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),500);
+    };
+    els.importEvents.addEventListener('change', (ev)=>{
+      const f = ev.target.files?.[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const arr = JSON.parse(reader.result);
+          if(Array.isArray(arr)){ writeEvents(arr); renderAll(); alert("Import terminé ✅"); }
+          else alert("Fichier invalide.");
+        }catch(e){ alert("Erreur de lecture du fichier."); }
+      };
+      reader.readAsText(f);
+      ev.target.value = "";
+    });
+
+    /* Init + API exposée */
+    renderColorSwatches(COLORS[0]); renderAll();
+    window.GRC_Calendar = {
+      openEventForm: (preset={}) => { // {date?,title?,description?,time?,color?,special?}
+        if(preset.date){ try{ state.selected = fromYMD(preset.date); state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1); }catch(e){} }
+        openForm(preset);
+      },
+      getSelectedDate: () => ymd(state.selected),
+      setSelectedDate: (dateStr) => { state.selected = fromYMD(dateStr); state.view = new Date(state.selected.getFullYear(), state.selected.getMonth(), 1); renderAll(); }
+    };
+  })();
+
+  /* ========= CATALOGUE DE SÉANCES ========= */
+  (function(){
+    const KEY = "grc_sessions";
+    const read = () => { try{ return JSON.parse(localStorage.getItem(KEY)||"[]"); } catch(e){ return []; } };
+    const write = (arr) => localStorage.setItem(KEY, JSON.stringify(arr));
+    const upsert = (s) => { const arr = read(); const i = arr.findIndex(x=>x.id===s.id); if(i>=0) arr[i]=s; else arr.push(s); write(arr); };
+    const del = (id) => write(read().filter(x=>x.id!==id));
+
+    /* Seed data si vide */
+    if(read().length===0){
+      write([
+        {id:"w1", title:"10×400m (r:1’)", type:"Fractionné", duration:60, intensity:"Élevée",
+         steps:["15’ Échauffement","10×400m à 5K pace (r:1’)","10’ Retour au calme"],
+         desc:"Classique piste pour travailler la vitesse spécifique 5K.", tags:["piste","vitesse","5k"], fav:true},
+        {id:"w2", title:"3×10’ au seuil (r:3’)", type:"Seuil", duration:70, intensity:"Moyenne",
+         steps:["15’ Échauffement","3×10’ au seuil (r:3’)","10’ Retour au calme"],
+         desc:"Améliore l’endurance à allure soutenue (85–90% FCM).", tags:["seuil","10k"], fav:false},
+        {id:"w3", title:"Côtes courtes 12×20s (r:1’30)", type:"Côtes", duration:50, intensity:"Élevée",
+         steps:["15’ Échauffement","12×20s côte (r:1’30 marche/retour)","10’ Retour au calme"],
+         desc:"Puissance et économie de course.", tags:["force","côtes"], fav:false},
+        {id:"w4", title:"Endurance fondamentale 45’", type:"Endurance", duration:45, intensity:"Faible",
+         steps:["45’ EF à 65–75% FCM"], desc:"Sortie facile pour récupérer et construire la base.", tags:["EF","récup"], fav:true},
+        {id:"w5", title:"Renfo bas du corps 30’", type:"Musculation", duration:30, intensity:"Moyenne",
+         steps:["3×(squats 12, fentes 10/10, hip thrust 12, mollets 15)","gainage 3×45s"], desc:"Séance PPG/renfo sans matériel.", tags:["PPG","home"], fav:false}
+      ]);
+    }
+
+    /* Els */
+    const els = {
+      list: document.getElementById("workoutList"),
+      q: document.getElementById("q"),
+      type: document.getElementById("typeFilter"),
+      intensity: document.getElementById("intensityFilter"),
+      duration: document.getElementById("durationFilter"),
+      sortBy: document.getElementById("sortBy"),
+      onlyFav: document.getElementById("onlyFav"),
+      addBtn: document.getElementById("addWorkoutBtn"),
+      exportBtn: document.getElementById("exportSessions"),
+      importInput: document.getElementById("importSessions"),
+      // modal form
+      modal: document.getElementById("modalWorkout"),
+      closeBtn: document.getElementById("closeWorkoutBtn"),
+      form: document.getElementById("workoutForm"),
+      wId: document.getElementById("workoutId"),
+      wTitle: document.getElementById("wTitle"),
+      wType: document.getElementById("wType"),
+      wDuration: document.getElementById("wDuration"),
+      wIntensity: document.getElementById("wIntensity"),
+      wSteps: document.getElementById("wSteps"),
+      wDesc: document.getElementById("wDesc"),
+      wTags: document.getElementById("wTags"),
+      wDelete: document.getElementById("wDelete"),
+      wFormTitle: document.getElementById("wFormTitle"),
+    };
+
+    function openModalSession(data){
+      const isEdit = !!data.id;
+      els.wFormTitle.textContent = isEdit ? "Modifier la séance" : "Nouvelle séance";
+      els.modal.classList.add("open"); els.modal.setAttribute("aria-hidden","false");
+      els.wId.value = data.id || "";
+      els.wTitle.value = data.title || "";
+      els.wType.value = data.type || "Fractionné";
+      els.wDuration.value = data.duration || 60;
+      els.wIntensity.value = data.intensity || "Moyenne";
+      els.wSteps.value = Array.isArray(data.steps)? data.steps.join("\n") : (data.steps || "");
+      els.wDesc.value = data.desc || "";
+      els.wTags.value = Array.isArray(data.tags)? data.tags.join(", ") : (data.tags || "");
+      els.wDelete.style.display = isEdit ? "inline-flex" : "none";
+      setTimeout(()=> els.wTitle.focus(), 50);
+    }
+    function closeModalSession(){ els.modal.classList.remove("open"); els.modal.setAttribute("aria-hidden","true"); els.form.reset(); els.wId.value=""; els.wDelete.style.display="none"; }
+    els.closeBtn.addEventListener('click', closeModalSession);
+    document.addEventListener('keydown', (e)=>{ if(e.key==="Escape" && els.modal.classList.contains("open")) closeModalSession(); });
+    els.modal.addEventListener('click', (e)=>{ if(e.target===els.modal) closeModalSession(); });
+
+    /* Render list */
+    function render(){
+      const q = els.q.value.trim().toLowerCase();
+      const t = els.type.value;
+      const i = els.intensity.value;
+      const d = els.duration.value; // "min-max"
+      const onlyFav = els.onlyFav.checked;
+      let items = read();
+
+      items = items.filter(s=>{
+        const hay = (s.title+" "+(s.desc||"")+" "+(s.tags||[]).join(" ")+" "+(s.steps||[]).join(" ")).toLowerCase();
+        if(q && !hay.includes(q)) return false;
+        if(t && s.type!==t) return false;
+        if(i && s.intensity!==i) return false;
+        if(d){
+          const [mn,mx] = d.split("-").map(Number);
+          if(!(s.duration>=mn && s.duration<=mx)) return false;
+        }
+        if(onlyFav && !s.fav) return false;
+        return true;
+      });
+
+      switch(els.sortBy.value){
+        case "duration": items.sort((a,b)=>a.duration-b.duration); break;
+        case "type": items.sort((a,b)=>a.type.localeCompare(b.type)); break;
+        case "fav": items.sort((a,b)=>(b.fav?1:0)-(a.fav?1:0) || a.title.localeCompare(b.title)); break;
+        default: items.sort((a,b)=>a.title.localeCompare(b.title));
+      }
+
+      els.list.innerHTML = "";
+      if(items.length===0){
+        const empty=document.createElement("div"); empty.className="hint"; empty.textContent="Aucune séance ne correspond aux filtres.";
+        els.list.appendChild(empty); return;
+      }
+
+      items.forEach(s=> els.list.appendChild(renderCard(s)));
+    }
+
+    function renderCard(s){
+      const card = document.createElement("div"); card.className="session card";
+      const head = document.createElement("div"); head.className="head";
+      const title = document.createElement("div"); title.style.fontWeight="800"; title.textContent=s.title;
+      const tag = document.createElement("span"); tag.className="tag"; tag.textContent=s.type;
+      head.appendChild(title); head.appendChild(tag);
+
+      const meta = document.createElement("div"); meta.className="meta";
+      const dur = document.createElement("span"); dur.className="pill"; dur.textContent = `${s.duration||"-"} min`;
+      const inten = document.createElement("span"); inten.className="pill"; inten.textContent = `Intensité : ${s.intensity}`;
+      if(s.tags && s.tags.length) {
+        const t = document.createElement("span"); t.className="pill"; t.textContent = "# "+s.tags.join(", ");
+        meta.appendChild(t);
+      }
+      meta.appendChild(dur); meta.appendChild(inten);
+
+      const preview = document.createElement("div"); preview.className="hint";
+      const steps = Array.isArray(s.steps) ? s.steps : (s.steps? s.steps.split("\n"): []);
+      preview.textContent = steps.length ? "• "+steps.slice(0,3).join(" / ") + (steps.length>3?" …":"") : (s.desc||"");
+
+      const actions = document.createElement("div"); actions.className="actions";
+      const fav = document.createElement("button"); fav.className="btn small fav"+(s.fav?" active":""); fav.innerHTML = s.fav?"⭐ Favori":"☆ Favori";
+      fav.onclick=()=>{ s.fav=!s.fav; upsert(s); render(); };
+      const plan = document.createElement("button"); plan.className="btn small"; plan.textContent="Planifier";
+      plan.title="Créer un évènement dans le calendrier";
+      plan.onclick=()=>{
+        window.__GRC_tabs?.activate('cal');
+        const date = window.GRC_Calendar?.getSelectedDate?.() || new Date().toISOString().slice(0,10);
+        window.GRC_Calendar?.openEventForm({
+          date,
+          title: s.title,
+          description: composeDescription(s),
+          color: "#ffd166"
+        });
+      };
+      const edit = document.createElement("button"); edit.className="btn small"; edit.textContent="Modifier";
+      edit.onclick=()=> openModalSession(s);
+      const delBtn = document.createElement("button"); delBtn.className="btn small danger"; delBtn.textContent="Supprimer";
+      delBtn.onclick=()=>{ if(confirm("Supprimer cette séance ?")){ del(s.id); render(); } };
+
+      actions.appendChild(fav); actions.appendChild(plan); actions.appendChild(edit); actions.appendChild(delBtn);
+
+      card.appendChild(head);
+      card.appendChild(meta);
+      card.appendChild(preview);
+      card.appendChild(actions);
+      return card;
+    }
+
+    function composeDescription(s){
+      const tags = s.tags && s.tags.length ? `Tags : ${s.tags.join(", ")}` : "";
+      const steps = Array.isArray(s.steps) ? s.steps : (s.steps? s.steps.split("\n"): []);
+      return [s.desc||"", steps.length?("Structure :\n- "+steps.join("\n- ")):"", `Type : ${s.type} • Intensité : ${s.intensity} • ${s.duration||"-"} min`, tags].filter(Boolean).join("\n\n");
+    }
+
+    /* Form submit */
+    els.form.addEventListener('submit',(e)=>{
+      e.preventDefault();
+      const obj = {
+        id: els.wId.value || `w_${Date.now()}`,
+        title: els.wTitle.value.trim(),
+        type: els.wType.value,
+        duration: parseInt(els.wDuration.value||"0",10) || 0,
+        intensity: els.wIntensity.value,
+        steps: els.wSteps.value ? els.wSteps.value.split("\n").map(x=>x.trim()).filter(Boolean) : [],
+        desc: els.wDesc.value.trim(),
+        tags: els.wTags.value ? els.wTags.value.split(",").map(x=>x.trim()).filter(Boolean) : [],
+        fav: false
+      };
+      if(!obj.title){ els.wTitle.focus(); return; }
+      upsert(obj); closeModalSession(); render();
+    });
+    els.wDelete.addEventListener('click',()=>{
+      const id = els.wId.value; if(id && confirm("Supprimer cette séance ?")){ del(id); closeModalSession(); render(); }
+    });
+
+    /* Controls */
+    ["input","change"].forEach(evt=>{
+      els.q.addEventListener(evt, render);
+      els.type.addEventListener(evt, render);
+      els.intensity.addEventListener(evt, render);
+      els.duration.addEventListener(evt, render);
+      els.sortBy.addEventListener(evt, render);
+      els.onlyFav.addEventListener(evt, render);
+    });
+    els.addBtn.addEventListener('click', ()=> openModalSession({}));
+    els.exportBtn.addEventListener('click', ()=>{
+      const data = read();
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="grc-seances.json"; a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href),500);
+    });
+    els.importInput.addEventListener('change',(ev)=>{
+      const f = ev.target.files?.[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        try{
+          const arr = JSON.parse(reader.result);
+          if(Array.isArray(arr)){ write(arr); render(); alert("Import terminé ✅"); }
+          else alert("Fichier invalide.");
+        }catch(e){ alert("Erreur de lecture du fichier."); }
+      };
+      reader.readAsText(f);
+      ev.target.value="";
+    });
+
+    /* First render */
+    render();
+  })();
+
+  /* ========= EVENEMENTS SPECIAUX (lecture depuis grc_events) ========= */
+  (function(){
+    const listEl = document.getElementById('evList');
+    const searchEl = document.getElementById('evSearch');
+    const statusEl = document.getElementById('evStatus');
+    const sortEl = document.getElementById('evSort');
+    const todayOnlyEl = document.getElementById('evToday');
+    document.getElementById('goCalendar').addEventListener('click', ()=> window.__GRC_tabs?.activate('cal'));
+
+    const STORAGE_KEY = "grc_events";
+    const readEvents = () => { try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); }catch{ return []; } };
+
+    const pad = n => String(n).padStart(2,'0');
+    const parseDT = (e) => {
+      if(!e?.date) return null;
+      const [y,m,d] = e.date.split('-').map(Number);
+      const h = e.time ? Number(e.time.split(':')[0]) : 0;
+      const mi = e.time ? Number(e.time.split(':')[1]) : 0;
+      return new Date(y, (m-1), d, h, mi);
+    };
+    const fmtDate = (e) => {
+      const dt = parseDT(e); if(!dt) return "—";
+      return new Intl.DateTimeFormat('fr-FR',{weekday:'short', day:'2-digit', month:'long'}).format(dt) + (e.time?` • ${e.time}`:'');
+    };
+
+    function render(){
+      const q = searchEl.value.trim().toLowerCase();
+      const status = statusEl.value; // upcoming | past | all
+      const onlyToday = todayOnlyEl.checked;
+
+      const today = new Date(); today.setHours(0,0,0,0);
+      let items = readEvents().filter(e => !!e.special);
+
+      items = items.filter(e=>{
+        const hay = (e.title+" "+(e.description||"")).toLowerCase();
+        if(q && !hay.includes(q)) return false;
+        const dt = parseDT(e); if(!dt) return false;
+        dt.setSeconds(0,0);
+        if(onlyToday){
+          const d0 = new Date(today), d1 = new Date(today); d1.setDate(d1.getDate()+1);
+          if(!(dt>=d0 && dt<d1)) return false;
+        } else if(status === 'upcoming'){
+          if(dt < today) return false;
+        } else if(status === 'past'){
+          if(dt >= today) return false;
+        }
+        return true;
+      });
+
+      if(sortEl.value === 'title') items.sort((a,b)=>a.title.localeCompare(b.title));
+      else items.sort((a,b)=> parseDT(a) - parseDT(b)); // date
+
+      listEl.innerHTML = "";
+      if(items.length===0){
+        const empty = document.createElement('div'); empty.className='hint'; empty.textContent="Aucun événement spécial selon les filtres.";
+        listEl.appendChild(empty); return;
+      }
+
+      items.forEach(ev=> listEl.appendChild(card(ev)));
+    }
+
+    function card(ev){
+      const c = document.createElement('div'); c.className='ev-card card';
+      const head = document.createElement('div'); head.className='ev-head';
+      const left = document.createElement('div');
+      const date = document.createElement('div'); date.className='ev-date'; date.textContent = fmtDate(ev);
+      const title = document.createElement('div'); title.className='ev-title'; title.textContent = "★ " + ev.title;
+      left.appendChild(date); left.appendChild(title);
+      const color = document.createElement('span'); color.className='dot'; color.style.cssText='width:14px;height:14px;border:2px solid #ffffff33; border-radius:50%';
+      color.style.background = ev.color || '#ffd166';
+      head.appendChild(left); head.appendChild(color);
+
+      const desc = document.createElement('div'); desc.className='hint'; desc.textContent = ev.description || "—";
+
+      const actions = document.createElement('div'); actions.className='ev-actions';
+      const openBtn = document.createElement('button'); openBtn.className='btn small'; openBtn.textContent='Ouvrir / Modifier';
+      openBtn.onclick=()=>{ window.__GRC_tabs?.activate('cal'); window.GRC_Calendar?.openEventForm(ev); };
+      const unspec = document.createElement('button'); unspec.className='btn small'; unspec.textContent='Retirer des spéciaux';
+      unspec.onclick=()=>{ toggleSpecial(ev,false); };
+      actions.appendChild(openBtn); actions.appendChild(unspec);
+
+      c.appendChild(head); c.appendChild(desc); c.appendChild(actions);
+      return c;
+    }
+
+    function toggleSpecial(ev, val){
+      try{
+        const arr = readEvents();
+        const i = arr.findIndex(x=>x.id===ev.id);
+        if(i>=0){ arr[i].special = val; localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); window.dispatchEvent(new Event('grc:events-changed')); }
+      }catch{}
+    }
+
+    /* Events */
+    ['input','change'].forEach(evt=>{
+      searchEl.addEventListener(evt, render);
+      statusEl.addEventListener(evt, render);
+      sortEl.addEventListener(evt, render);
+      todayOnlyEl.addEventListener(evt, render);
+    });
+    window.addEventListener('grc:events-changed', render);
+
+    /* First render */
+    render();
+  })();
+  </script>
+
+  <!-- POPUP Auth -->
+<!-- POPUP Auth -->
+<div class="modal" id="modalAuth" aria-hidden="true" aria-modal="true" role="dialog">
+  <div class="dialog">
+    <div class="cal-header" style="padding:0 0 10px 0">
+      <div class="cal-title">
+        <h2>Connexion</h2>
+        <div class="sub">E-mail + Mot de passe</div>
+      </div>
+      <div><button class="btn small" id="authClose">✕</button></div>
+    </div>
+
+    <div class="form" style="gap:10px">
+      <div class="hint" style="font-weight:700;margin-bottom:6px">E-mail + Mot de passe</div>
+      <div class="row">
+        <input type="email" id="authEmailPwd" placeholder="email@exemple.com" />
+        <input type="password" id="authPwd" placeholder="Mot de passe (≥ 6 caractères)" />
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn"         id="btnSignInPwd">Se connecter</button>
+        <button class="btn primary" id="btnSignUpPwd">Créer un compte</button>
+        <button class="btn ghost"   id="btnResetPwd">Mot de passe oublié</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module">
+  /* =======================
+     Firebase v10 (CDN)
+  ======================= */
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
+    query, where, orderBy, limit, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import {
+    getAuth, onAuthStateChanged, signOut,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    sendPasswordResetEmail, EmailAuthProvider, linkWithCredential
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  /* =======================
+     Config Firebase
+  ======================= */
+  const firebaseConfig = {
+    apiKey: "AIzaSyClEuYmCiCo7z4xlGeP_ZW4ABneURCXNx8",
+    authDomain: "golden-running-club.firebaseapp.com",
+    projectId: "golden-running-club",
+    storageBucket: "golden-running-club.firebasestorage.app",
+    messagingSenderId: "196156484656",
+    appId: "1:196156484656:web:47cee188b3c895069411f5",
+    measurementId: "G-0F1J7XLLGV"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const db   = getFirestore(app);
+  const auth = getAuth(app);
+
+  /* =======================
+     Clubs (multi-villes)
+  ======================= */
+  const CLUBS = [
+    { id: 'madrid',       label: 'Madrid' },
+    { id: 'biarritz',     label: 'Biarritz' },
+    { id: 'limoges',      label: 'Limoges' },
+    { id: 'noirmoutier',  label: 'Noirmoutier' },
+    { id: 'bordeaux',     label: 'Bordeaux' },
+    { id: 'poitiers',     label: 'Poitiers' },
+  ];
+  const CLUB = "golden-running-club"; // catalogue commun
+  const clubSelect = document.getElementById('clubSelect');
+  let CURRENT_CLUB = localStorage.getItem('grc_club') || 'bordeaux';
+  if (clubSelect) {
+    clubSelect.innerHTML = CLUBS.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+    clubSelect.value = CURRENT_CLUB;
+  }
+
+  /* =======================
+     Passerelle Firestore ⇆ localStorage
+  ======================= */
+  const LKEY_EVENTS   = "grc_events";
+  const LKEY_SESSIONS = "grc_sessions";
+  let _remoteApply = false;
+
+  function setLocalAndNotify(key, arr){
+    _remoteApply = true;
+    localStorage.setItem(key, JSON.stringify(arr));
+    if(key === LKEY_EVENTS){
+      window.dispatchEvent(new Event('grc:events-changed'));
+      const d = window.GRC_Calendar?.getSelectedDate?.();
+      if(d) window.GRC_Calendar?.setSelectedDate?.(d);
+    } else if(key === LKEY_SESSIONS){
+      document.getElementById('q')?.dispatchEvent(new Event('input'));
+    }
+    _remoteApply = false;
+  }
+
+  // Listeners Firestore (démarrés après login)
+  let unsubs = [];
+  function startRealtime(){
+    if(unsubs.length) return;
+
+    // EVENTS par ville
+    const qEvents = query(
+      collection(db, "events"),
+      where("club_id","==", CURRENT_CLUB)
+    );
+    const u1 = onSnapshot(qEvents, snap => {
+      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalAndNotify(LKEY_EVENTS, arr);
+    }, err => console.error("Firestore events error:", err));
+
+    // SESSIONS catalogue commun
+    const qSessions = query(
+      collection(db, "sessions"),
+      where("club_id","==", CLUB)
+    );
+    const u2 = onSnapshot(qSessions, snap => {
+      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLocalAndNotify(LKEY_SESSIONS, arr);
+    }, err => console.error("Firestore sessions error:", err));
+
+    unsubs.push(u1, u2);
+  }
+  function stopRealtime(){ unsubs.forEach(fn => { try{ fn(); }catch{} }); unsubs = []; }
+
+  // localStorage -> Firestore (écrit seulement si connecté)
+  const _origSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value){
+    _origSetItem(key, value);
+    if(_remoteApply) return;
+    if(!auth.currentUser) return;           // pas connecté
+    if(!window.GRC_IsAdmin) return;         // non-admin : on ne tente pas (UI+Rules bloquent)
+
+    try{
+      if(key !== LKEY_EVENTS && key !== LKEY_SESSIONS) return;
+      const arr = JSON.parse(value || "[]");
+      const collName = key === LKEY_EVENTS ? "events" : "sessions";
+
+      // upsert
+      arr.forEach(o=>{
+        const id = o.id || doc(collection(db, collName)).id;
+        o.id = id;
+        const payload = { ...o, club_id: (collName === 'events' ? CURRENT_CLUB : CLUB) };
+        setDoc(doc(db, collName, id), payload, { merge: true }).catch(console.warn);
+      });
+
+      // (Les suppressions peuvent être gérées dans l’UI si besoin)
+    }catch(e){ console.warn(e); }
+  };
+
+  /* =======================
+     Auth + Rôles
+  ======================= */
+  window.GRC_Role = "anonymous";
+  window.GRC_IsAdmin = false;
+
+  // UI refs
+  const modal    = document.getElementById('modalAuth');
+  const openBtn  = document.getElementById('authOpen');
+  const closeBtn = document.getElementById('authClose');
+  const outBtn   = document.getElementById('authOut');
+  const badge    = document.getElementById('roleBadge');
+
+  // Champs/boutons email+pwd
+  const emailPwdInp = document.getElementById('authEmailPwd');
+  const pwdInp      = document.getElementById('authPwd');
+  const btnInPwd    = document.getElementById('btnSignInPwd');
+  const btnUpPwd    = document.getElementById('btnSignUpPwd');
+  const btnReset    = document.getElementById('btnResetPwd');
+
+  // Popup helpers + verrou global
+  const openModal  = ()=> { modal?.classList.add('open');  modal?.setAttribute('aria-hidden','false'); setTimeout(()=>emailPwdInp?.focus(),50); };
+  const closeModal = ()=> { modal?.classList.remove('open'); modal?.setAttribute('aria-hidden','true'); };
+  function lockUI(){ document.body.classList.add('locked'); openModal(); }
+  function unlockUI(){ document.body.classList.remove('locked'); closeModal(); }
+
+  openBtn?.addEventListener('click', openModal);
+  closeBtn?.addEventListener('click', (e)=>{ if(!auth.currentUser){ e.preventDefault(); e.stopPropagation(); return; } closeModal(); });
+  modal?.addEventListener('click', (e)=>{ if(e.target===modal){ if(!auth.currentUser){ e.preventDefault(); return; } closeModal(); } });
+
+  async function ensureProfile(uid){
+    const ref = doc(db, "profiles", uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, { role: "coureur", created_at: new Date().toISOString() }, { merge: true });
+      return "coureur";
+    }
+    return snap.data().role || "coureur";
+  }
+
+  let listenersWired = false;
+  function updateUiLock(){
+    const label = window.GRC_IsAdmin ? "admin" : (window.GRC_Role === "anonymous" ? "visiteur" : "coureur");
+    badge && (badge.textContent = "Rôle : " + label);
+    openBtn && (openBtn.style.display = auth.currentUser ? "none" : "inline-flex");
+    outBtn  && (outBtn.style.display  = auth.currentUser ? "inline-flex" : "none");
+
+    const isAdmin = window.GRC_IsAdmin;
+    const addEv = document.getElementById('addBtn'); if(addEv) addEv.style.display = isAdmin ? "inline-flex" : "none";
+    const addWo = document.getElementById('addWorkoutBtn'); if(addWo) addWo.style.display = isAdmin ? "inline-flex" : "none";
+
+    if(!listenersWired){
+      const evForm = document.getElementById('eventForm');
+      evForm && evForm.addEventListener('submit', (e)=>{ if(!window.GRC_IsAdmin){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); } }, true);
+
+      const delBtn = document.getElementById('deleteBtn');
+      delBtn && delBtn.addEventListener('click', (e)=>{ if(!window.GRC_IsAdmin){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); } }, true);
+
+      const cal = document.querySelector('.calendar');
+      cal && cal.addEventListener('dblclick', (e)=>{ if(!window.GRC_IsAdmin){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); } }, true);
+
+      const list = document.getElementById('workoutList');
+      list && list.addEventListener('click', (e)=>{
+        const t = e.target;
+        if(!window.GRC_IsAdmin && t.closest?.('.actions')){ e.stopImmediatePropagation(); e.preventDefault(); openModal(); }
+      }, true);
+
+      const dayList = document.getElementById('eventList');
+      dayList && dayList.addEventListener('click', (e)=>{
+        const t = e.target;
+        if(!window.GRC_IsAdmin && t.matches?.('button') && /Modifier/i.test(t.textContent||"")){
+          e.stopImmediatePropagation(); e.preventDefault(); openModal();
+        }
+      }, true);
+
+      listenersWired = true;
+    }
+  }
+
+  async function refreshRole(){
+    const user = auth.currentUser;
+    if(!user){ window.GRC_Role="anonymous"; window.GRC_IsAdmin=false; updateUiLock(); return; }
+    const role = await ensureProfile(user.uid);
+    window.GRC_Role = role;
+    window.GRC_IsAdmin = (role === "admin");
+    updateUiLock();
+  }
+
+  // Auth: email + mot de passe
+  btnInPwd?.addEventListener('click', async ()=>{
+    try{
+      const email = (emailPwdInp?.value || "").trim();
+      const pwd   = (pwdInp?.value || "");
+      if(!email || !pwd) return alert("Entre ton e-mail et ton mot de passe.");
+      await signInWithEmailAndPassword(auth, email, pwd);
+      await refreshRole();
+    }catch(e){ alert(e.message||e); }
+  });
+
+  btnUpPwd?.addEventListener('click', async ()=>{
+    try{
+      const email = (emailPwdInp?.value || "").trim();
+      const pwd   = (pwdInp?.value || "");
+      if(!email || !pwd || pwd.length < 6) return alert("Mot de passe trop court (≥ 6).");
+      if(auth.currentUser && auth.currentUser.isAnonymous){
+        const cred = EmailAuthProvider.credential(email, pwd);
+        await linkWithCredential(auth.currentUser, cred);
+      }else{
+        await createUserWithEmailAndPassword(auth, email, pwd);
+      }
+      await refreshRole();
+    }catch(e){ alert(e.message||e); }
+  });
+
+  btnReset?.addEventListener('click', async ()=>{
+    try{
+      const email = (emailPwdInp?.value || "").trim();
+      if(!email) return alert("Entre ton e-mail pour recevoir le lien de réinitialisation.");
+      await sendPasswordResetEmail(auth, email);
+      alert("Un e-mail de réinitialisation a été envoyé.");
+    }catch(e){ alert(e.message||e); }
+  });
+
+  outBtn?.addEventListener('click', async ()=>{
+    await signOut(auth);
+    window.GRC_Role="anonymous"; window.GRC_IsAdmin=false;
+    updateUiLock();
+  });
+
+  /* =======================
+     Social (Strava) — lecture
+  ======================= */
+  const STRAVA_AUTH_START_URL = "https://europe-west1-<ton-projet>.cloudfunctions.net/stravaAuthStart"; // ⟵ remplace après déploiement
+
+  const stravaStatus     = document.getElementById('stravaStatus');
+  const btnConnectStrava = document.getElementById('btnConnectStrava');
+  const el7d  = document.getElementById('stat7d');
+  const el4w  = document.getElementById('stat4w');
+  const elYtd = document.getElementById('statYtd');
+  const socialFeed = document.getElementById('socialFeed');
+
+  let unsubsSocial = [];
+  function stopSocialRealtime(){ unsubsSocial.forEach(u=>{try{u();}catch{}}); unsubsSocial=[]; }
+  function startSocialRealtime(uid){
+    if(unsubsSocial.length) return;
+
+    // Stats
+    const u1 = onSnapshot(doc(db,'social_stats', uid), snap=>{
+      const s = snap.data() || {};
+      el7d && (el7d.textContent  = formatKm(s.last_7_days_m||0));
+      el4w && (el4w.textContent  = formatKm(s.last_4_weeks_m||0));
+      elYtd && (elYtd.textContent = formatKm(s.ytd_m||0));
+    });
+
+    // Activités récentes
+    const qActs = query(
+      collection(db,'social_activities', uid, 'items'),
+      orderBy('start_date','desc'),
+      limit(20)
+    );
+    const u2 = onSnapshot(qActs, snap=>{
+      if(!socialFeed) return;
+      socialFeed.innerHTML = snap.docs.map(d=>{
+        const a = d.data();
+        const date = a.start_date ? new Date(a.start_date).toLocaleDateString() : '';
+        const dist = formatKm(a.distance_m||0);
+        const dur  = formatHMS(a.moving_time_s||0);
+        const pace = a.pace_min_km ? `${a.pace_min_km.toFixed(1)} min/km` : '–';
+        return `<li><strong>${a.name||'Sortie'}</strong> — ${date} — ${dist} — ${dur} — ${pace}</li>`;
+      }).join('') || '<li class="hint">Aucune activité pour le moment.</li>';
+    });
+
+    unsubsSocial.push(u1,u2);
+  }
+  function formatKm(m){ return (m/1000).toFixed(1)+' km'; }
+  function formatHMS(s){ const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); return h?`${h}h${m}m`:`${m}m`; }
+
+  btnConnectStrava?.addEventListener('click', async ()=>{
+    if(!auth.currentUser) return alert("Connecte-toi d'abord.");
+    const idToken = await auth.currentUser.getIdToken(true);
+    window.location.href = `${STRAVA_AUTH_START_URL}?state=${encodeURIComponent(idToken)}`;
+  });
+
+  /* =======================
+     Routing: auth + realtime + lock
+  ======================= */
+  onAuthStateChanged(auth, async (user)=>{
+    if(user){
+      await refreshRole();
+      startRealtime();
+      startSocialRealtime(user.uid);
+      unlockUI();
+      if(stravaStatus) stravaStatus.textContent = "Connectez votre Strava pour voir vos activités.";
+    }else{
+      stopRealtime();
+      stopSocialRealtime();
+      window.GRC_Role="anonymous"; window.GRC_IsAdmin=false;
+      updateUiLock();
+      lockUI();
+    }
+  });
+
+  // Changement de ville
+  clubSelect?.addEventListener('change', ()=>{
+    CURRENT_CLUB = clubSelect.value;
+    localStorage.setItem('grc_club', CURRENT_CLUB);
+    localStorage.setItem(LKEY_EVENTS, "[]");
+    window.dispatchEvent(new Event('grc:events-changed'));
+    stopRealtime(); startRealtime();
+  });
+
+  // Au chargement, bloque si pas connecté
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if(!auth.currentUser){ lockUI(); }
+  });
+</script>
+
+
+</body>
+</html>
