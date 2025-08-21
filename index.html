@@ -1873,26 +1873,38 @@ localStorage.setItem = function(key, value){
   closeBtn?.addEventListener('click', (e)=>{ if(!auth.currentUser){ e.preventDefault(); e.stopPropagation(); return; } closeModal(); });
   modal?.addEventListener('click', (e)=>{ if(e.target===modal){ if(!auth.currentUser){ e.preventDefault(); return; } closeModal(); } });
 
-  async function ensureProfile(uid){
-    const ref = doc(db, "profiles", uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, { role: "coureur", created_at: new Date().toISOString() }, { merge: true });
-      return "coureur";
-    }
-    return snap.data().role || "coureur";
+async function ensureProfile(uid){
+  const ref = doc(db, "profiles", uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, { role: "coureur", approved: false, created_at: new Date().toISOString() }, { merge: true });
+    return { role: "coureur", approved: false };
   }
+  const d = snap.data() || {};
+  return { role: d.role || "coureur", approved: !!d.approved };
+}
+
 
   let listenersWired = false;
   function updateUiLock(){
     const label = window.GRC_IsAdmin ? "admin" : (window.GRC_Role === "anonymous" ? "visiteur" : "coureur");
+    const waiting = (auth.currentUser && !window.GRC_IsAdmin && window.GRC_Role!=="anonymous" && !window.GRC_Approved);
+const label2 = waiting ? "en attente" : label;
+badge && (badge.textContent = "Rôle : " + label2);
+
     badge && (badge.textContent = "Rôle : " + label);
     openBtn && (openBtn.style.display = auth.currentUser ? "none" : "inline-flex");
     outBtn  && (outBtn.style.display  = auth.currentUser ? "inline-flex" : "none");
 
-    const isAdmin = window.GRC_IsAdmin;
-    const addEv = document.getElementById('addBtn'); if(addEv) addEv.style.display = isAdmin ? "inline-flex" : "none";
-    const addWo = document.getElementById('addWorkoutBtn'); if(addWo) addWo.style.display = isAdmin ? "inline-flex" : "none";
+const isAdmin = window.GRC_IsAdmin;
+const notReady = !window.GRC_Approved && !isAdmin;
+const addEv = document.getElementById('addBtn');      if(addEv) addEv.style.display = isAdmin ? "inline-flex" : "none";
+const addWo = document.getElementById('addWorkoutBtn');if(addWo) addWo.style.display = isAdmin ? "inline-flex" : "none";
+
+// Optionnel : tu peux aussi griser les tabs si non approuvé
+document.querySelectorAll('.tabs .tab').forEach(t=>{
+  t.disabled = notReady && !isAdmin;
+});
 
     if(!listenersWired){
       const evForm = document.getElementById('eventForm');
@@ -1930,14 +1942,22 @@ list && list.addEventListener('click', (e)=>{
     }
   }
 
-  async function refreshRole(){
-    const user = auth.currentUser;
-    if(!user){ window.GRC_Role="anonymous"; window.GRC_IsAdmin=false; updateUiLock(); return; }
-    const role = await ensureProfile(user.uid);
-    window.GRC_Role = role;
-    window.GRC_IsAdmin = (role === "admin");
+async function refreshRole(){
+  const user = auth.currentUser;
+  if(!user){
+    window.GRC_Role="anonymous";
+    window.GRC_IsAdmin=false;
+    window.GRC_Approved=false;
     updateUiLock();
+    return;
   }
+  const prof = await ensureProfile(user.uid); // { role, approved }
+  window.GRC_Role = prof.role;
+  window.GRC_IsAdmin = (prof.role === "admin");
+  window.GRC_Approved = !!prof.approved;
+  updateUiLock();
+}
+
 
   // Auth: email + mot de passe
   btnInPwd?.addEventListener('click', async ()=>{
@@ -2037,21 +2057,30 @@ list && list.addEventListener('click', (e)=>{
   /* =======================
      Routing: auth + realtime + lock
   ======================= */
-  onAuthStateChanged(auth, async (user)=>{
-    if(user){
-      await refreshRole();
+onAuthStateChanged(auth, async (user)=>{
+  if(user){
+    await refreshRole();
+    if (window.GRC_Approved) {
       startRealtime();
       startSocialRealtime(user.uid);
       unlockUI();
       if(stravaStatus) stravaStatus.textContent = "Connectez votre Strava pour voir vos activités.";
-    }else{
+    } else {
       stopRealtime();
       stopSocialRealtime();
-      window.GRC_Role="anonymous"; window.GRC_IsAdmin=false;
-      updateUiLock();
-      lockUI();
+      lockUI(); // reste flou + modal
+      const sub = document.querySelector('#modalAuth .sub');
+      if (sub) sub.textContent = "Compte en attente d’approbation par un administrateur.";
     }
-  });
+  } else {
+    stopRealtime();
+    stopSocialRealtime();
+    window.GRC_Role="anonymous"; window.GRC_IsAdmin=false;
+    updateUiLock();
+    lockUI();
+  }
+});
+
 
   // Changement de ville
 clubSelect?.addEventListener('change', ()=>{
