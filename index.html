@@ -660,6 +660,13 @@ body.locked .views {
       tabCat.setAttribute('aria-selected', m.cat); viewCat.classList.toggle('active', m.cat);
       tabEv .setAttribute('aria-selected', m.ev ); viewEv .classList.toggle('active',  m.ev);
     }
+    // GA4: suivre les changements d’onglet comme des vues de page
+window.__gaLog?.('page_view', {
+  page_location: location.href + '#' + which,
+  page_path: location.pathname + '#' + which,
+  page_title: 'Onglet: ' + which.toUpperCase()
+});
+
     tabCal.addEventListener('click', ()=> activate('cal'));
     tabCat.addEventListener('click', ()=> activate('cat'));
     tabEv .addEventListener('click', ()=> activate('ev'));
@@ -1732,13 +1739,18 @@ c.appendChild(actions);
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getFirestore, collection, doc, getDoc, setDoc, deleteDoc,
-    query, where, orderBy, limit, onSnapshot
+    query, where, orderBy, limit, onSnapshot,getDocs, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import {
     getAuth, onAuthStateChanged, signOut,
     createUserWithEmailAndPassword, signInWithEmailAndPassword,
     sendPasswordResetEmail, EmailAuthProvider, linkWithCredential
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getAnalytics, isSupported, logEvent } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+
+
+
 
   /* =======================
      Config Firebase
@@ -1756,6 +1768,43 @@ c.appendChild(actions);
   const app  = initializeApp(firebaseConfig);
   const db   = getFirestore(app);
   const auth = getAuth(app);
+  // === GA4 via Firebase Analytics ===
+let analytics;
+isSupported().then(ok => {
+  if (!ok) return;
+  analytics = getAnalytics(app);
+
+  // page_view initial
+  logEvent(analytics, 'page_view', {
+    page_location: location.href,
+    page_path: location.pathname + location.hash,
+    page_title: document.title || 'Dashboard'
+  });
+
+  // helper global pour logger facilement
+  window.__gaLog = (name, params = {}) => { try { if (analytics) logEvent(analytics, name, params); } catch(e) {} };
+}).catch(()=>{});
+
+
+  // pour déboguer depuis la console
+  window.db   = db;
+  window.auth = auth;
+  window.doc = doc;
+  window.getDoc = getDoc;
+  window.getDocs = getDocs;
+window.updateDoc = updateDoc;
+window.collection = collection;
+
+
+    // Petit log de contrôle
+  console.log("[DBG] projectId =", app.options.projectId);
+
+  // ➜ Ici seulement on peut écouter l’auth
+  onAuthStateChanged(auth, (user) => {
+    console.log("[DBG] user on Hosting =", user);
+  });
+
+  
 
   /* =======================
      Clubs (multi-villes)
